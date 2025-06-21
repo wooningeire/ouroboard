@@ -57,6 +57,12 @@ const createNewTask = async (x: number, y: number, parentNodeId: number) => {
         position: { x, y },
         data: task,
     });
+
+    edges.push({
+        id: `e${parentNodeId}-${task.id}`,
+        source: parentNodeId.toString(),
+        target: task.id.toString(),
+    });
 };
 
 

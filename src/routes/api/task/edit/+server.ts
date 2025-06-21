@@ -10,12 +10,14 @@ const endpoint = post(async ({
     pos_y,
     title,
     parent_id,
+    priority,
 }: {
     id: number,
     pos_x?: number,
     pos_y?: number,
     title?: string,
     parent_id?: number | null,
+    priority?: number | null,
 }) => {
     const rows = await db.update(taskTable)
         .set({
@@ -23,6 +25,7 @@ const endpoint = post(async ({
             pos_y,
             title,
             parent_id,
+            priority,
         })
         .where(eq(taskTable.id, id))
         .returning();
