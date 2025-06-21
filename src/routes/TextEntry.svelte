@@ -3,20 +3,30 @@ let {
     value,
     onValueChange,
     placeholder = null,
+    validate = () => true,
 }: {
     value: string,
     onValueChange: (value: string) => void,
     placeholder?: string | null,
+    validate?: (value: string) => boolean,
 } = $props();
 
 
 let localValue = $state(value);
+const valid = $derived(validate(localValue));
+
 $effect(() => {
     localValue = value;
 });
 
 const handleBlur = () => {
     if (localValue === value) return;
+
+    if (!valid) {
+        localValue = value;
+        return;
+    }
+
     onValueChange(localValue);
 };
 
@@ -29,7 +39,9 @@ const handleKeydown = (event: KeyboardEvent) => {
 };
 </script>
 
-<text-entry-container>
+<text-entry-container
+    class:invalid={!valid}
+>
     {#if placeholder !== null && localValue.length === 0}
         <text-entry-placeholder>{placeholder}</text-entry-placeholder>
     {/if}
@@ -47,13 +59,13 @@ const handleKeydown = (event: KeyboardEvent) => {
 
 
 <style lang="scss">
-text-entry-container {
-    padding: 0 0.25rem;
+text-entry-container.invalid {
+    outline: 1px solid oklch(62.828% 0.20996 13.579);
+    outline-offset: 0.5rem;
 }
 
 text-entry {
     display: block;
-    width: 20ch;
 }
 
 text-entry-placeholder {

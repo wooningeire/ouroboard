@@ -17,6 +17,7 @@
 	height: max-content;
 
 	padding: 0.25rem;
+	font-weight: 400;
 
 	&:hover {
 		cursor: pointer;

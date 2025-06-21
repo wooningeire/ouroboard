@@ -23,7 +23,7 @@ export class GetEndpoint<T=null, Payload extends Record<string, string>=any, Out
             return out;
         }
         
-        return json(out);
+        return json(out ?? {});
     }
     
     handler(data: T): RequestHandler {
@@ -54,7 +54,7 @@ export class PostEndpoint<T=null, Payload extends Record<string, any>=any, Outpu
             return out;
         }
         
-        return json(out);
+        return json(out ?? {});
     }
     
     handler(data: T): RequestHandler {

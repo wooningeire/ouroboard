@@ -121,7 +121,7 @@ const onNodeDragStop = async ({ targetNode }: { targetNode: Node | null }) => {
 };
 
 const onDelete: OnDelete = async ({ nodes }) => {
-    await api.task.delete({
+    await api.task.trash({
         ids: nodes.map(node => Number(node.id)),
     });
 };

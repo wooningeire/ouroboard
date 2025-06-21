@@ -5,6 +5,7 @@ import TextEntry from "./TextEntry.svelte";
 import * as DropdownMenu from "@/ui/dropdown-menu";
 import { Button } from "@/ui/button";
 import Priority, { labels } from "./Priority.svelte";
+    import Hours from "./Hours.svelte";
 
 let { id, data }: NodeProps<Node<Awaited<ReturnType<typeof api.task.new>>>> = $props();
 
@@ -15,28 +16,56 @@ const saveTitle = async (title: string) => {
     });
 };
 
+let isFirstRun = true;
+
 let priorityString = $state(data.priority?.toString() ?? "");
 const priority = $derived(priorityString === "" ? null : Number(priorityString));
 
 $effect(() => {
-    void priorityString;
-    if (priorityString === null) return;
+    void priority;
+
+    if (isFirstRun) return;
 
     (async () => {
         await api.task.edit({
             id: Number(id),
-            priority: Number(priorityString),
+            priority,
         });
     })();
-})
+});
+
+let hrCompleted = $state(0);
+let hrRemaining = $state(0);
+
+$effect(() => {
+    void hrCompleted;
+    void hrRemaining;
+
+    if (isFirstRun) return;
+
+    (async () => {
+        await api.task.updateHours({
+            id: Number(id),
+            hr_completed: hrCompleted,
+            hr_remaining: hrRemaining,
+        });
+    })();
+});
+
+$effect(() => {
+    isFirstRun = false;
+});
+
 </script>
 
 <task-node>
-    <TextEntry
-        value={data.title}
-        onValueChange={title => saveTitle(title)}
-        placeholder="Task title"
-    />
+    <task-title>
+        <TextEntry
+            value={data.title}
+            onValueChange={title => saveTitle(title)}
+            placeholder="Task title"
+        />
+    </task-title>
 
     <DropdownMenu.Root>
         <DropdownMenu.Trigger>
@@ -63,6 +92,14 @@ $effect(() => {
             </DropdownMenu.Group>
         </DropdownMenu.Content>
     </DropdownMenu.Root>
+
+
+    <Hours
+        {hrCompleted}
+        {hrRemaining}
+        onHrCompletedChange={value => hrCompleted = value}
+        onHrRemainingChange={value => hrRemaining = value}
+    />
 </task-node>
 
 <Handle type="target" position={Position.Left} />
@@ -73,6 +110,11 @@ $effect(() => {
 task-node {
     display: flex;
     flex-direction: column;
+    gap: 1rem;
     text-align: left;
+}
+
+task-title {
+    width: 20ch;
 }
 </style>

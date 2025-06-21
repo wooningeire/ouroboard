@@ -13,6 +13,7 @@ export const taskTable = pgTable("task", {
 	parent_id: integer(),
 	pos_x: real().notNull().default(0),
 	pos_y: real().notNull().default(0),
+	trashed: boolean().notNull().default(false),
 }, table => [
 	foreignKey({
 		columns: [table.parent_id],
@@ -22,7 +23,7 @@ export const taskTable = pgTable("task", {
 		.onDelete("set null"),
 ]);
 
-export const taskUpdateTable = pgTable("task_update", {
+export const taskHoursTable = pgTable("task_hours", {
 	id: serial().notNull().primaryKey(),
 	created_at: timestamp({withTimezone: true}).notNull().defaultNow(),
 	hr_remaining: real().notNull(),

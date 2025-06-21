@@ -3,13 +3,15 @@ import { db } from "$db";
 import { taskTable } from "$db/schema";
 import { eq, or } from "drizzle-orm";
 
-
 const endpoint = post(async ({
     ids,
 }: {
     ids: number[],
 }) => {
-    await db.delete(taskTable)
+    await db.update(taskTable)
+        .set({
+            trashed: true,
+        })
         .where(
             or(...ids.map(id => eq(taskTable.id, id)))
         );
@@ -17,5 +19,5 @@ const endpoint = post(async ({
     return {};
 });
 
-export const DELETE = endpoint.handler(null);
-export type DeleteTasks = typeof endpoint;
+export const PATCH = endpoint.handler(null);
+export type TrashTasks = typeof endpoint;
