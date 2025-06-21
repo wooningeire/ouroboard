@@ -2,9 +2,9 @@
 import { Background, MiniMap, SvelteFlow, useSvelteFlow } from "@xyflow/svelte";
 import "@xyflow/svelte/dist/style.css";
 import "./index.scss";
-import type { OnConnectStart, OnConnectEnd, OnConnect, Connection, Node, Edge, NodeEvents } from "@xyflow/svelte";
+import type { OnConnectStart, OnConnectEnd, OnConnect, Connection, Node, Edge } from "@xyflow/svelte";
     import TaskNode from "./TaskNode.svelte";
-    import {api} from "$api/client";
+    import { api } from "$api/client";
 
 // Get access to SvelteFlow instance for coordinate conversion
 const { screenToFlowPosition } = useSvelteFlow();
@@ -27,7 +27,7 @@ let edges = $state<Edge[]>([]);
                 x: task.pos_x,
                 y: task.pos_y,
             },
-            data: { label: `Task ${task.id}` },
+            data: task,
         });
 
         if (task.parent_id !== null) {
@@ -45,17 +45,17 @@ let edges = $state<Edge[]>([]);
 
 
 const createNewTask = async (x: number, y: number, parentNodeId: number) => {
-    const {id} = await api.task.new({
+    const task = await api.task.new({
         pos_x: x,
         pos_y: y,
         parent_id: parentNodeId,
     });
 
     nodes.push({
-        id: id.toString(),
+        id: task.id.toString(),
         type: "task",
-        position: { x, y }, // Use the actual coordinates passed in
-        data: { label: `Task ${id}` },
+        position: { x, y },
+        data: task,
     });
 };
 
@@ -96,11 +96,16 @@ const onConnectEnd: OnConnectEnd = (event) => {
     parentNodeId = null;
 };
 
-const onConnect: OnConnect = () => {
+const onConnect: OnConnect = async (connection: Connection) => {
     lastConnectionDropped = false;
+
+    await api.task.edit({
+        id: Number(connection.target),
+        parent_id: Number(connection.source),
+    });
 };
 
-const onNodeDragStop: NodeEvents["onnodedragstop"] = async ({ targetNode }) => {
+const onNodeDragStop = async ({ targetNode }: { targetNode: Node | null }) => {
     if (targetNode === null) return;
 
     await api.task.edit({
