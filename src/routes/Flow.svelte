@@ -2,11 +2,10 @@
 import { Background, MiniMap, SvelteFlow, useSvelteFlow } from "@xyflow/svelte";
 import "@xyflow/svelte/dist/style.css";
 import "./index.scss";
-import type { OnConnectStart, OnConnectEnd, OnConnect, Connection, Node, Edge } from "@xyflow/svelte";
-    import TaskNode from "./TaskNode.svelte";
-    import { api } from "$api/client";
+import type { OnConnectStart, OnConnectEnd, OnConnect, OnDelete, Connection, Node, Edge } from "@xyflow/svelte";
+import TaskNode from "./TaskNode.svelte";
+import { api } from "$api/client";
 
-// Get access to SvelteFlow instance for coordinate conversion
 const { screenToFlowPosition } = useSvelteFlow();
 
 let nodes = $state<Node[]>([]);
@@ -120,6 +119,12 @@ const onNodeDragStop = async ({ targetNode }: { targetNode: Node | null }) => {
         pos_y: targetNode.position.y,
     });
 };
+
+const onDelete: OnDelete = async ({ nodes }) => {
+    await api.task.delete({
+        ids: nodes.map(node => Number(node.id)),
+    });
+};
 </script>
 
 <SvelteFlow
@@ -130,6 +135,8 @@ const onNodeDragStop = async ({ targetNode }: { targetNode: Node | null }) => {
     onconnectend={onConnectEnd}
     onconnect={onConnect}
     onnodedragstop={onNodeDragStop}
+    ondelete={onDelete}
+    deleteKey={["Backspace", "Delete"]}
     nodeTypes={{
         task: TaskNode,
     }}

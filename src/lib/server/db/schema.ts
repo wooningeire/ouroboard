@@ -18,7 +18,8 @@ export const taskTable = pgTable("task", {
 		columns: [table.parent_id],
 		foreignColumns: [table.id],
 		name: "parent",
-	}),
+	})
+		.onDelete("set null"),
 ]);
 
 export const taskUpdateTable = pgTable("task_update", {
