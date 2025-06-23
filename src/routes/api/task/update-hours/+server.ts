@@ -27,11 +27,13 @@ const endpoint = post(async ({
             hr_completed,
             hr_remaining,
         });
-    
-    return await db.select()
+
+    const reversedHoursHistory = await db.select()
         .from(taskHoursTable)
         .where(eq(taskHoursTable.task_id, id))
         .orderBy(desc(taskHoursTable.created_at));
+    
+    return reversedHoursHistory.reverse();
 });
 
 export const POST = endpoint.handler(null);

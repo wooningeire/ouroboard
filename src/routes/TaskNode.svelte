@@ -7,6 +7,7 @@ import { Button } from "@/ui/button";
 import Priority, { labels } from "./Priority.svelte";
 import Hours from "./Hours.svelte";
     import type { AugmentedTask } from "./store.svelte";
+    import { onMount } from "svelte";
 
 const { id, data: task }: NodeProps<Node<AugmentedTask>> = $props();
 
@@ -17,48 +18,50 @@ const saveTitle = async (title: string) => {
     });
 };
 
-let isFirstRun = true;
+const priority = $derived(task.base.priority);
+const priorityString = $derived(priority?.toString() ?? "");
 
-let priorityString = $state(task.base.priority?.toString() ?? "");
-const priority = $derived(priorityString === "" ? null : Number(priorityString));
+const updatePriority = async (newPriorityString: string) => {
+    const newPriority = priorityString === "" ? null : Number(newPriorityString);
+    task.base.priority = newPriority;
 
-$effect(() => {
-    void priority;
+    await api.task.edit({
+        id: Number(id),
+        priority: newPriority,
+    });
+};
 
-    if (isFirstRun) return;
+const hrCompleted = $derived(task.base.hoursHistory.at(-1)?.hr_completed ?? 0);
+const hrRemaining = $derived(task.base.hoursHistory.at(-1)?.hr_remaining ?? 0);
 
-    (async () => {
-        await api.task.edit({
-            id: Number(id),
-            priority,
-        });
-    })();
-});
+const updateHoursHistory = async () => {
+    task.base.hoursHistory = await api.task.updateHours({
+        id: Number(id),
+        hr_completed: hrCompleted,
+        hr_remaining: hrRemaining,
+    });
+};
 
-let hrCompleted = $state(task.base.hoursHistory[0]?.hr_completed ?? 0);
-let hrRemaining = $state(task.base.hoursHistory[0]?.hr_remaining ?? 0);
+const updateHrCompleted = async (newHrCompleted: number) => {
+    task.base.hoursHistory.push({
+        created_at: new Date(),
+        hr_completed: newHrCompleted,
+        hr_remaining: hrRemaining,
+    });
 
-$effect(() => {
-    void hrCompleted;
-    void hrRemaining;
+    await updateHoursHistory();
+};
 
-    if (isFirstRun) return;
+const updateHrRemaining = async (newHrRemaining: number) => {
+    task.base.hoursHistory.push({
+        created_at: new Date(),
+        hr_completed: hrCompleted,
+        hr_remaining: newHrRemaining,
+    });
 
-    (async () => {
-        task.base.hoursHistory = await api.task.updateHours({
-            id: Number(id),
-            hr_completed: hrCompleted,
-            hr_remaining: hrRemaining,
-        });
+    await updateHoursHistory();
+};
 
-        hrCompleted = task.base.hoursHistory[0]?.hr_completed ?? 0;
-        hrRemaining = task.base.hoursHistory[0]?.hr_remaining ?? 0;
-    })();
-});
-
-$effect(() => {
-    isFirstRun = false;
-});
 
 </script>
 
@@ -82,7 +85,10 @@ $effect(() => {
 
         <DropdownMenu.Content class="w-56">
             <DropdownMenu.Group>
-                <DropdownMenu.RadioGroup bind:value={priorityString}>
+                <DropdownMenu.RadioGroup
+                    value={priorityString}
+                    onValueChange={updatePriority}
+                >
                     {#each labels as _, i}
                         <DropdownMenu.RadioItem value={i.toString()}>
                             <Priority value={i} />
@@ -101,10 +107,10 @@ $effect(() => {
     <Hours
         {hrCompleted}
         {hrRemaining}
-        onHrCompletedChange={value => hrCompleted = value}
-        onHrRemainingChange={value => hrRemaining = value}
+        onHrCompletedChange={updateHrCompleted}
+        onHrRemainingChange={updateHrRemaining}
 
-        hrCompletedTotal={task.hrComplete()}
+        hrCompletedTotal={task.hrCompleted()}
         hrRemainingTotal={task.hrRemaining()}
     />
 </task-node>

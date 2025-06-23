@@ -28,7 +28,7 @@ const endpoint = post(async ({
 
     return {
         ...taskRows[0],
-        hoursHistory: taskHoursRows,
+        hoursHistory: taskHoursRows.reverse(),
     };
 });
 

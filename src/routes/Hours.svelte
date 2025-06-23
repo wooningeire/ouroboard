@@ -20,48 +20,67 @@ const {
     hrRemainingTotal: number,
 } = $props();
 
-const fractionComplete = $derived(hrCompletedTotal / (hrCompletedTotal + hrRemainingTotal));
+
+const hrEstimateTotal = $derived(hrCompletedTotal + hrRemainingTotal);
+
+const fractionComplete = $derived(hrCompletedTotal / hrEstimateTotal);
 </script>
 
 <hours-tracker>
-    <big-number style:grid-area="1/1">
-        <TextEntry
-            value={hrCompleted.toString()}
-            onValueChange={text => onHrCompletedChange(Number(text))}
-            validate={text => !isNaN(Number(text))}
-        />
-    </big-number>
-    <number-label style:grid-area="2/1">hr done</number-label>
-
-    <big-number style:grid-area="1/2">
-        <TextEntry
-            value={hrRemaining.toString()}
-            onValueChange={text => onHrRemainingChange(Number(text))}
-            validate={text => !isNaN(Number(text))}
-        />
-    </big-number>
-    <number-label style:grid-area="2/2">hr rem</number-label>
-    
-    <hours-summary style:grid-area="3/1 / 4/3">
+    <hours-summary style:grid-area="1/1 / 2/-1">
         <Progress
             value={hrCompletedTotal}
-            max={hrCompletedTotal + hrRemainingTotal}
+            max={hrEstimateTotal}
         />
 
-        {(isNaN(fractionComplete) ? 100 : fractionComplete * 100).toFixed(2)}% of {hrCompletedTotal + hrRemainingTotal} hr
+        {(isNaN(fractionComplete) ? 100 : fractionComplete * 100).toFixed(2)}% of {hrEstimateTotal} hr
     </hours-summary>
+
+    <total-hours-display>
+        <big-number style:grid-area="1/1">{hrCompletedTotal}</big-number>
+        <number-label style:grid-area="2/1">hr cmp</number-label>
+        <number-entry style:grid-area="3/1">
+            <TextEntry
+                value={hrCompleted.toString()}
+                onValueChange={text => onHrCompletedChange(Number(text))}
+                validate={text => !isNaN(Number(text))}
+            />
+        </number-entry>
+
+
+        <big-number style:grid-area="1/2">{hrRemainingTotal}</big-number>
+        <number-label style:grid-area="2/2">hr rem</number-label>
+        <number-entry style:grid-area="3/2">
+            <TextEntry
+                value={hrRemaining.toString()}
+                onValueChange={text => onHrRemainingChange(Number(text))}
+                validate={text => !isNaN(Number(text))}
+            />
+        </number-entry>
+
+
+        <big-number style:grid-area="1/3">{hrEstimateTotal}</big-number>
+        <number-label style:grid-area="2/3">hr est</number-label>
+    </total-hours-display>
 </hours-tracker>
 
 <style lang="scss">
 hours-tracker {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas: auto auto;
+    display: flex;
+    flex-direction: column;
     text-align: center;
 }
 
+total-hours-display {
+    margin-top: 0.5rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto auto auto;
+}
+
 big-number {
-    line-height: 0.85;
+    font-size: 1.125rem;
+    line-height: 0.75;
 }
 
 number-label {

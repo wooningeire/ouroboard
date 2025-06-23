@@ -13,7 +13,7 @@ const { fitView } = useSvelteFlow();
 const {nodes, edges} = $derived(store.getFlowObjects());
 
 const createNewTask = async (parentNodeId: number) => {
-    const placeholderTask = {
+    const placeholderTask = $state({
         id: -1,
         created_at: new Date(),
         title: "",
@@ -30,13 +30,13 @@ const createNewTask = async (parentNodeId: number) => {
             hr_completed: 0,
             hr_remaining: 0,
         }],
-    };
+    });
 
     store.addTask(placeholderTask);
 
-    const task = await api.task.new({
+    const task = $state(await api.task.new({
         parent_id: parentNodeId,
-    });
+    }));
 
     store.delTask(placeholderTask);
     store.addTask(task);

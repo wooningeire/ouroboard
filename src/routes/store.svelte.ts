@@ -5,7 +5,7 @@ import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
 export type AugmentedTask = {
     base: Task,
-    hrComplete: () => number,
+    hrCompleted: () => number,
     hrRemaining: () => number,
 };
 
@@ -21,16 +21,16 @@ export const get = () => derived;
 
 const computeHours = (task: Task) => {
     return {
-        hrComplete:
-            (task.hoursHistory[0]?.hr_completed ?? 0)
+        hrCompleted:
+            (task.hoursHistory.at(-1)?.hr_completed ?? 0)
             + (
                 state.parentsToChildIds.get(task.id)?.values()
-                    .map(childId => state.tasks.get(childId)?.hrComplete() ?? 0)
+                    .map(childId => state.tasks.get(childId)?.hrCompleted() ?? 0)
                     .reduce((a, b) => a + b, 0) 
                     ?? 0
             ),
         hrRemaining:
-            (task.hoursHistory[0]?.hr_remaining ?? 0)
+            (task.hoursHistory.at(-1)?.hr_remaining ?? 0)
             + (
                 state.parentsToChildIds.get(task.id)?.values()
                     .map(childId => state.tasks.get(childId)?.hrRemaining() ?? 0)
@@ -43,12 +43,12 @@ const computeHours = (task: Task) => {
 export const addTask = (task: Task) => {
     const hours = $derived(computeHours(task));
 
-    const hrComplete = $derived(hours.hrComplete);
+    const hrCompleted = $derived(hours.hrCompleted);
     const hrRemaining = $derived(hours.hrRemaining);
 
     state.tasks.set(task.id, {
         base: task,
-        hrComplete: () => hrComplete,
+        hrCompleted: () => hrCompleted,
         hrRemaining: () => hrRemaining,
     });
 
@@ -88,7 +88,8 @@ export const delTask = (task: Task) => {
 
 export const initializeTasks = (tasks: Task[]) => {
     for (const task of tasks) {
-        addTask(task);
+        const taskProxy = $state(task);
+        addTask(taskProxy);
     }
 };
 
@@ -98,7 +99,7 @@ const layoutNodes = () => {
     graph.setGraph({ rankdir: "LR" });
 
     const nodeWidth = 300;
-    const nodeHeight = 125;
+    const nodeHeight = 150;
 
     for (const [parentId, children] of state.parentsToChildIds) {
         for (const childId of children) {
