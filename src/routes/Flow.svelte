@@ -6,44 +6,53 @@ import type { OnConnectStart, OnConnectEnd, OnConnect, OnDelete, Connection, Nod
 import TaskNode from "./TaskNode.svelte";
 import { api, type Task } from "$api/client";
 import { store } from "./store.svelte";
+import Dagre from "@dagrejs/dagre";
+import { tick } from "svelte";
 
-const { screenToFlowPosition } = useSvelteFlow();
+const { screenToFlowPosition, fitView } = useSvelteFlow();
 
 let nodes = $state<Node<Task>[]>([]);
 
 let edges = $state<Edge[]>([]);
 
 
-(async () => {
-    const {tasks} = await api.task.list({});
+const relayout = (nodes: Node<Task>[], edges: Edge[]) => {
+    const graph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+    graph.setGraph({ rankdir: "LR" });
 
-    store.tasks = tasks;
+    const nodeWidth = 200;
+    const nodeHeight = 200;
 
-    const newNodes: Node<Task>[] = [];
-    const newEdges: Edge[] = [];
-    for (const task of tasks) {
-        newNodes.push({
-            id: task.id.toString(),
-            type: "task",
-            position: {
-                x: task.pos_x,
-                y: task.pos_y,
-            },
-            data: task,
+    for (const edge of edges) {
+        graph.setEdge(edge.source, edge.target);
+    }
+    for (const node of nodes) {
+        graph.setNode(node.id, {
+            ...node,
+            width: nodeWidth,
+            height: nodeHeight,
         });
-
-        if (task.parent_id !== null) {
-            newEdges.push({
-                id: `e${task.parent_id}-${task.id}`,
-                source: task.parent_id.toString(),
-                target: task.id.toString(),
-            });
-        }
     }
 
-    nodes = newNodes;
-    edges = newEdges;
-})();
+    Dagre.layout(graph);
+
+    return {
+        nodes: nodes.map((node) => {
+            const position = graph.node(node.id);
+            return {
+                ...node,
+                position: {
+                    // We are shifting the dagre node position (anchor=center center) to the top left
+                    // so it matches the Svelte Flow node anchor point (top left).
+                    x: position.x - nodeWidth / 2,
+                    y: position.y - nodeHeight / 2,
+                },
+            };
+        }),
+        edges,
+    };
+
+};
 
 
 const createNewTask = async (x: number, y: number, parentNodeId: number) => {
@@ -67,6 +76,8 @@ const createNewTask = async (x: number, y: number, parentNodeId: number) => {
         source: parentNodeId.toString(),
         target: task.id.toString(),
     });
+
+    ({nodes, edges} = relayout(nodes, edges));
 };
 
 
@@ -109,6 +120,8 @@ const onConnectEnd: OnConnectEnd = (event) => {
 const onConnect: OnConnect = async (connection: Connection) => {
     lastConnectionDropped = false;
 
+    ({nodes, edges} = relayout(nodes, edges));
+
     await api.task.edit({
         id: Number(connection.target),
         parent_id: Number(connection.source),
@@ -125,11 +138,48 @@ const onNodeDragStop = async ({ targetNode }: { targetNode: Node | null }) => {
     });
 };
 
-const onDelete: OnDelete = async ({ nodes }) => {
+const onDelete: OnDelete = async ({ nodes: deletedNodes }) => {
+    ({nodes, edges} = relayout(nodes, edges));
+
     await api.task.trash({
-        ids: nodes.map(node => Number(node.id)),
+        ids: deletedNodes.map(node => Number(node.id)),
     });
 };
+
+
+(async () => {
+    const {tasks} = await api.task.list({});
+
+    store.tasks = tasks;
+
+    const newNodes: Node<Task>[] = [];
+    const newEdges: Edge[] = [];
+    for (const task of tasks) {
+        newNodes.push({
+            id: task.id.toString(),
+            type: "task",
+            position: {
+                x: task.pos_x,
+                y: task.pos_y,
+            },
+            data: task,
+        });
+
+        if (task.parent_id !== null) {
+            newEdges.push({
+                id: `e${task.parent_id}-${task.id}`,
+                source: task.parent_id.toString(),
+                target: task.id.toString(),
+            });
+        }
+    }
+
+    ({nodes, edges} = relayout(newNodes, newEdges));
+    await tick();
+    ({nodes, edges} = relayout(nodes, edges));
+    fitView();
+})();
+
 </script>
 
 <SvelteFlow

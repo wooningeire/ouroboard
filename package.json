@@ -36,6 +36,7 @@
 		"vite": "^6.2.5"
 	},
 	"dependencies": {
+		"@dagrejs/dagre": "^1.1.5",
 		"@xyflow/svelte": "^1.1.0",
 		"drizzle-orm": "^0.44.2",
 		"postgres": "^3.4.5"
