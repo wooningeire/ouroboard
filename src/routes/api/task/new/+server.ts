@@ -4,18 +4,12 @@ import { taskHoursTable, taskTable } from "$db/schema";
 
 
 const endpoint = post(async ({
-    pos_x,
-    pos_y,
     parent_id,
 }: {
-    pos_x: number,
-    pos_y: number,
     parent_id?: number,
 }) => {
     const taskRows = await db.insert(taskTable)
         .values({
-            pos_x,
-            pos_y,
             parent_id,
         })
         .returning();

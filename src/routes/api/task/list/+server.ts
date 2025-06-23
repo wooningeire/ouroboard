@@ -15,7 +15,8 @@ const endpoint = get(async () => {
                 created_at: taskHoursTable.created_at,
                 hr_completed: taskHoursTable.hr_completed,
                 hr_remaining: taskHoursTable.hr_remaining,
-            }).from(taskHoursTable)
+            })
+                .from(taskHoursTable)
                 .where(eq(taskHoursTable.task_id, task.id))
                 .orderBy(desc(taskHoursTable.created_at));
 

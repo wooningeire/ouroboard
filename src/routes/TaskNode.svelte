@@ -6,8 +6,9 @@ import * as DropdownMenu from "@/ui/dropdown-menu";
 import { Button } from "@/ui/button";
 import Priority, { labels } from "./Priority.svelte";
 import Hours from "./Hours.svelte";
+    import type { AugmentedTask } from "./store.svelte";
 
-let { id, data }: NodeProps<Node<Task>> = $props();
+const { id, data: task }: NodeProps<Node<AugmentedTask>> = $props();
 
 const saveTitle = async (title: string) => {
     await api.task.edit({
@@ -18,7 +19,7 @@ const saveTitle = async (title: string) => {
 
 let isFirstRun = true;
 
-let priorityString = $state(data.priority?.toString() ?? "");
+let priorityString = $state(task.base.priority?.toString() ?? "");
 const priority = $derived(priorityString === "" ? null : Number(priorityString));
 
 $effect(() => {
@@ -34,8 +35,8 @@ $effect(() => {
     })();
 });
 
-let hrCompleted = $state(data.hoursHistory[0]?.hr_completed ?? 0);
-let hrRemaining = $state(data.hoursHistory[0]?.hr_remaining ?? 0);
+let hrCompleted = $state(task.base.hoursHistory[0]?.hr_completed ?? 0);
+let hrRemaining = $state(task.base.hoursHistory[0]?.hr_remaining ?? 0);
 
 $effect(() => {
     void hrCompleted;
@@ -44,14 +45,14 @@ $effect(() => {
     if (isFirstRun) return;
 
     (async () => {
-        data.hoursHistory = await api.task.updateHours({
+        task.base.hoursHistory = await api.task.updateHours({
             id: Number(id),
             hr_completed: hrCompleted,
             hr_remaining: hrRemaining,
         });
 
-        hrCompleted = data.hoursHistory[0]?.hr_completed ?? 0;
-        hrRemaining = data.hoursHistory[0]?.hr_remaining ?? 0;
+        hrCompleted = task.base.hoursHistory[0]?.hr_completed ?? 0;
+        hrRemaining = task.base.hoursHistory[0]?.hr_remaining ?? 0;
     })();
 });
 
@@ -64,7 +65,7 @@ $effect(() => {
 <task-node>
     <task-title>
         <TextEntry
-            value={data.title}
+            value={task.base.title}
             onValueChange={title => saveTitle(title)}
             placeholder="Task title"
         />
@@ -102,6 +103,9 @@ $effect(() => {
         {hrRemaining}
         onHrCompletedChange={value => hrCompleted = value}
         onHrRemainingChange={value => hrRemaining = value}
+
+        hrCompletedTotal={task.hrComplete()}
+        hrRemainingTotal={task.hrRemaining()}
     />
 </task-node>
 

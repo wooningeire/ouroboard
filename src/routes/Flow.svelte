@@ -4,80 +4,42 @@ import "@xyflow/svelte/dist/style.css";
 import "./index.scss";
 import type { OnConnectStart, OnConnectEnd, OnConnect, OnDelete, Connection, Node, Edge } from "@xyflow/svelte";
 import TaskNode from "./TaskNode.svelte";
-import { api, type Task } from "$api/client";
-import { store } from "./store.svelte";
-import Dagre from "@dagrejs/dagre";
-import { tick } from "svelte";
+import { api } from "$api/client";
+import * as store from "./store.svelte";
+import { onMount, tick } from "svelte";
 
-const { screenToFlowPosition, fitView } = useSvelteFlow();
+const { fitView } = useSvelteFlow();
 
-let nodes = $state<Node<Task>[]>([]);
+const {nodes, edges} = $derived(store.getFlowObjects());
 
-let edges = $state<Edge[]>([]);
-
-
-const relayout = (nodes: Node<Task>[], edges: Edge[]) => {
-    const graph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-    graph.setGraph({ rankdir: "LR" });
-
-    const nodeWidth = 200;
-    const nodeHeight = 200;
-
-    for (const edge of edges) {
-        graph.setEdge(edge.source, edge.target);
-    }
-    for (const node of nodes) {
-        graph.setNode(node.id, {
-            ...node,
-            width: nodeWidth,
-            height: nodeHeight,
-        });
-    }
-
-    Dagre.layout(graph);
-
-    return {
-        nodes: nodes.map((node) => {
-            const position = graph.node(node.id);
-            return {
-                ...node,
-                position: {
-                    // We are shifting the dagre node position (anchor=center center) to the top left
-                    // so it matches the Svelte Flow node anchor point (top left).
-                    x: position.x - nodeWidth / 2,
-                    y: position.y - nodeHeight / 2,
-                },
-            };
-        }),
-        edges,
+const createNewTask = async (parentNodeId: number) => {
+    const placeholderTask = {
+        id: -1,
+        created_at: new Date(),
+        title: "",
+        desc: null,
+        target_start: null,
+        target_end: null,
+        hard_end: null,
+        priority: null,
+        clear: false,
+        parent_id: parentNodeId,
+        trashed: false,
+        hoursHistory: [{
+            created_at: new Date(),
+            hr_completed: 0,
+            hr_remaining: 0,
+        }],
     };
 
-};
+    store.addTask(placeholderTask);
 
-
-const createNewTask = async (x: number, y: number, parentNodeId: number) => {
     const task = await api.task.new({
-        pos_x: x,
-        pos_y: y,
         parent_id: parentNodeId,
     });
 
-    store.tasks.push(task);
-
-    nodes.push({
-        id: task.id.toString(),
-        type: "task",
-        position: { x, y },
-        data: task,
-    });
-
-    edges.push({
-        id: `e${parentNodeId}-${task.id}`,
-        source: parentNodeId.toString(),
-        target: task.id.toString(),
-    });
-
-    ({nodes, edges} = relayout(nodes, edges));
+    store.delTask(placeholderTask);
+    store.addTask(task);
 };
 
 
@@ -108,9 +70,7 @@ const onConnectEnd: OnConnectEnd = (event) => {
             screenY = 0;
         }
 
-        const flowPosition = screenToFlowPosition({ x: screenX, y: screenY });
-
-        createNewTask(flowPosition.x, flowPosition.y, Number(parentNodeId));
+        createNewTask(Number(parentNodeId));
     }
 
     lastConnectionDropped = false;
@@ -120,26 +80,36 @@ const onConnectEnd: OnConnectEnd = (event) => {
 const onConnect: OnConnect = async (connection: Connection) => {
     lastConnectionDropped = false;
 
-    ({nodes, edges} = relayout(nodes, edges));
+    const parentId = Number(connection.source);
+    const childId = Number(connection.target);
+
+    const task = store.getTask(childId);
+    if (task !== undefined) {
+        task.base.parent_id = parentId;
+    }
 
     await api.task.edit({
-        id: Number(connection.target),
-        parent_id: Number(connection.source),
+        id: childId,
+        parent_id: parentId,
     });
 };
 
-const onNodeDragStop = async ({ targetNode }: { targetNode: Node | null }) => {
-    if (targetNode === null) return;
+// const onNodeDragStop = async ({ targetNode }: { targetNode: Node | null }) => {
+//     if (targetNode === null) return;
 
-    await api.task.edit({
-        id: Number(targetNode.id),
-        pos_x: targetNode.position.x,
-        pos_y: targetNode.position.y,
-    });
-};
+//     await api.task.edit({
+//         id: Number(targetNode.id),
+//         pos_x: targetNode.position.x,
+//         pos_y: targetNode.position.y,
+//     });
+// };
 
 const onDelete: OnDelete = async ({ nodes: deletedNodes }) => {
-    ({nodes, edges} = relayout(nodes, edges));
+    for (const node of deletedNodes) {
+        const task = store.getTask(Number(node.id));
+        if (task === undefined) continue;
+        store.delTask(task.base);
+    }
 
     await api.task.trash({
         ids: deletedNodes.map(node => Number(node.id)),
@@ -147,49 +117,25 @@ const onDelete: OnDelete = async ({ nodes: deletedNodes }) => {
 };
 
 
-(async () => {
+onMount(async () => {
     const {tasks} = await api.task.list({});
 
-    store.tasks = tasks;
+    store.initializeTasks(tasks);
 
-    const newNodes: Node<Task>[] = [];
-    const newEdges: Edge[] = [];
-    for (const task of tasks) {
-        newNodes.push({
-            id: task.id.toString(),
-            type: "task",
-            position: {
-                x: task.pos_x,
-                y: task.pos_y,
-            },
-            data: task,
-        });
-
-        if (task.parent_id !== null) {
-            newEdges.push({
-                id: `e${task.parent_id}-${task.id}`,
-                source: task.parent_id.toString(),
-                target: task.id.toString(),
-            });
-        }
-    }
-
-    ({nodes, edges} = relayout(newNodes, newEdges));
     await tick();
-    ({nodes, edges} = relayout(nodes, edges));
-    fitView();
-})();
 
+    fitView();
+});
 </script>
 
 <SvelteFlow
-    bind:nodes
-    bind:edges
+    {nodes}
+    {edges}
     fitView
+    nodesDraggable={false}
     onconnectstart={onConnectStart}
     onconnectend={onConnectEnd}
     onconnect={onConnect}
-    onnodedragstop={onNodeDragStop}
     ondelete={onDelete}
     deleteKey={["Backspace", "Delete"]}
     nodeTypes={{

@@ -11,8 +11,6 @@ export const taskTable = pgTable("task", {
 	priority: integer(),
 	clear: boolean().notNull().default(false),
 	parent_id: integer(),
-	pos_x: real().notNull().default(0),
-	pos_y: real().notNull().default(0),
 	trashed: boolean().notNull().default(false),
 }, table => [
 	foreignKey({

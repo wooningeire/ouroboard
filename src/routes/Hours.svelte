@@ -7,14 +7,20 @@ const {
     hrRemaining,
     onHrCompletedChange,
     onHrRemainingChange,
+
+    hrCompletedTotal,
+    hrRemainingTotal,
 }: {
     hrCompleted: number,
     hrRemaining: number,
     onHrRemainingChange: (value: number) => void,
     onHrCompletedChange: (value: number) => void,
+    
+    hrCompletedTotal: number,
+    hrRemainingTotal: number,
 } = $props();
 
-const fractionComplete = $derived(hrCompleted / (hrCompleted + hrRemaining));
+const fractionComplete = $derived(hrCompletedTotal / (hrCompletedTotal + hrRemainingTotal));
 </script>
 
 <hours-tracker>
@@ -38,11 +44,11 @@ const fractionComplete = $derived(hrCompleted / (hrCompleted + hrRemaining));
     
     <hours-summary style:grid-area="3/1 / 4/3">
         <Progress
-            value={hrCompleted}
-            max={hrCompleted + hrRemaining}
+            value={hrCompletedTotal}
+            max={hrCompletedTotal + hrRemainingTotal}
         />
 
-        {(isNaN(fractionComplete) ? 100 : fractionComplete * 100).toFixed(2)}% of {hrCompleted + hrRemaining} hr
+        {(isNaN(fractionComplete) ? 100 : fractionComplete * 100).toFixed(2)}% of {hrCompletedTotal + hrRemainingTotal} hr
     </hours-summary>
 </hours-tracker>
 
@@ -55,7 +61,6 @@ hours-tracker {
 }
 
 big-number {
-    font-size: 1.5rem;
     line-height: 0.85;
 }
 
