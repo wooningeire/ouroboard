@@ -22,7 +22,7 @@ const endpoint = get(async () => {
 
             return {
                 ...task,
-                hoursHistory,
+                hoursHistory: hoursHistory.reverse(),
             };
         })());
     }

@@ -33,7 +33,7 @@ const fractionComplete = $derived(hrCompletedTotal / hrEstimateTotal);
             max={hrEstimateTotal}
         />
 
-        {(isNaN(fractionComplete) ? 100 : fractionComplete * 100).toFixed(2)}% of {hrEstimateTotal} hr
+        {(isNaN(fractionComplete) ? 100 : fractionComplete * 100).toFixed(2)}%
     </hours-summary>
 
     <total-hours-display>

@@ -4,9 +4,9 @@ import { taskHoursTable, taskTable } from "$db/schema";
 
 
 const endpoint = post(async ({
-    parent_id,
+    parent_id = null,
 }: {
-    parent_id?: number,
+    parent_id?: number | null,
 }) => {
     const taskRows = await db.insert(taskTable)
         .values({

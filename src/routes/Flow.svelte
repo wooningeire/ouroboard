@@ -7,12 +7,16 @@ import TaskNode from "./TaskNode.svelte";
 import { api } from "$api/client";
 import * as store from "./store.svelte";
 import { onMount, tick } from "svelte";
+import * as DropdownMenu from "@/ui/dropdown-menu";
 
 const { fitView } = useSvelteFlow();
 
 const {nodes, edges} = $derived(store.getFlowObjects());
 
-const createNewTask = async (parentNodeId: number) => {
+let contextMenuOpen = $state(false);
+let contextMenuPosition = $state({ x: 0, y: 0 });
+
+const createNewTask = async (parentNodeId: number | null=null) => {
     const placeholderTask = $state({
         id: -1,
         created_at: new Date(),
@@ -25,6 +29,7 @@ const createNewTask = async (parentNodeId: number) => {
         clear: false,
         parent_id: parentNodeId,
         trashed: false,
+        hidden: false,
         hoursHistory: [{
             created_at: new Date(),
             hr_completed: 0,
@@ -40,6 +45,21 @@ const createNewTask = async (parentNodeId: number) => {
 
     store.delTask(placeholderTask);
     store.addTask(task);
+};
+
+const createNewRootTask = async () => {
+    await createNewTask();
+    contextMenuOpen = false;
+};
+
+const onPaneContextMenu = ({ event }: {event: MouseEvent}) => {
+    event.preventDefault();
+    contextMenuPosition = { x: event.clientX, y: event.clientY };
+    contextMenuOpen = true;
+};
+
+const onPaneClick = () => {
+    contextMenuOpen = false;
 };
 
 
@@ -137,6 +157,8 @@ onMount(async () => {
     onconnectend={onConnectEnd}
     onconnect={onConnect}
     ondelete={onDelete}
+    onpanecontextmenu={onPaneContextMenu}
+    onpaneclick={onPaneClick}
     deleteKey={["Backspace", "Delete"]}
     nodeTypes={{
         task: TaskNode,
@@ -145,3 +167,15 @@ onMount(async () => {
     <Background />
     <MiniMap />
 </SvelteFlow>
+
+<DropdownMenu.Root bind:open={contextMenuOpen}>
+    <DropdownMenu.Trigger
+        class="context-menu-trigger"
+        style="position: fixed; left: {contextMenuPosition.x}px; top: {contextMenuPosition.y}px; visibility: hidden;"
+    />
+    <DropdownMenu.Content>
+        <DropdownMenu.Item onclick={createNewRootTask}>
+            New root
+        </DropdownMenu.Item>
+    </DropdownMenu.Content>
+</DropdownMenu.Root>

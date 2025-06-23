@@ -22,7 +22,7 @@ const priority = $derived(task.base.priority);
 const priorityString = $derived(priority?.toString() ?? "");
 
 const updatePriority = async (newPriorityString: string) => {
-    const newPriority = priorityString === "" ? null : Number(newPriorityString);
+    const newPriority = newPriorityString === "" ? null : Number(newPriorityString);
     task.base.priority = newPriority;
 
     await api.task.edit({
