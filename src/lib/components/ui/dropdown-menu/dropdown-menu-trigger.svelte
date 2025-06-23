@@ -13,15 +13,16 @@
 
 <style lang="scss">
 :global(.dropdown-menu-trigger) {
-	width: min-content;
 	height: max-content;
 
 	padding: 0.25rem;
 	font-weight: 400;
 
+	border: 1px solid #0000001f;
+
 	&:hover {
 		cursor: pointer;
-		background: #0000001f;
+		background: #0000000f;
 	}
 }
 </style>

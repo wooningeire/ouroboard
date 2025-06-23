@@ -1,7 +1,7 @@
 import { post } from "$api/endpoint-server";
 import { db } from "$db";
 import { taskHoursTable } from "$db/schema";
-import { and, eq, gt, lt } from "drizzle-orm";
+import { and, eq, gt, desc } from "drizzle-orm";
 
 const endpoint = post(async ({
     id,
@@ -21,14 +21,17 @@ const endpoint = post(async ({
             )
         );
 
-    const rows = await db.insert(taskHoursTable)
+    await db.insert(taskHoursTable)
         .values({
             task_id: id,
             hr_completed,
             hr_remaining,
         });
     
-    return rows[0];
+    return await db.select()
+        .from(taskHoursTable)
+        .where(eq(taskHoursTable.task_id, id))
+        .orderBy(desc(taskHoursTable.created_at));
 });
 
 export const POST = endpoint.handler(null);

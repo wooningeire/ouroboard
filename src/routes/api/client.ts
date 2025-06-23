@@ -17,3 +17,5 @@ export const api ={
         updateHours: apiPoster<UpdateHours>("task/update-hours"),
     },
 };
+
+export type Task = Awaited<ReturnType<typeof api.task.list>>["tasks"][0];

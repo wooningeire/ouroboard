@@ -1,6 +1,6 @@
 import { post } from "$api/endpoint-server";
 import { db } from "$db";
-import { taskTable } from "$db/schema";
+import { taskHoursTable, taskTable } from "$db/schema";
 
 
 const endpoint = post(async ({
@@ -12,7 +12,7 @@ const endpoint = post(async ({
     pos_y: number,
     parent_id?: number,
 }) => {
-    const rows = await db.insert(taskTable)
+    const taskRows = await db.insert(taskTable)
         .values({
             pos_x,
             pos_y,
@@ -20,7 +20,22 @@ const endpoint = post(async ({
         })
         .returning();
 
-    return rows[0];
+    const taskHoursRows = await db.insert(taskHoursTable)
+        .values({
+            task_id: taskRows[0].id,
+            hr_remaining: 0,
+            hr_completed: 0,
+        })
+        .returning({
+            created_at: taskHoursTable.created_at,
+            hr_completed: taskHoursTable.hr_completed,
+            hr_remaining: taskHoursTable.hr_remaining,
+        });
+
+    return {
+        ...taskRows[0],
+        hoursHistory: taskHoursRows,
+    };
 });
 
 export const POST = endpoint.handler(null);

@@ -4,11 +4,12 @@ import "@xyflow/svelte/dist/style.css";
 import "./index.scss";
 import type { OnConnectStart, OnConnectEnd, OnConnect, OnDelete, Connection, Node, Edge } from "@xyflow/svelte";
 import TaskNode from "./TaskNode.svelte";
-import { api } from "$api/client";
+import { api, type Task } from "$api/client";
+import { store } from "./store.svelte";
 
 const { screenToFlowPosition } = useSvelteFlow();
 
-let nodes = $state<Node[]>([]);
+let nodes = $state<Node<Task>[]>([]);
 
 let edges = $state<Edge[]>([]);
 
@@ -16,7 +17,9 @@ let edges = $state<Edge[]>([]);
 (async () => {
     const {tasks} = await api.task.list({});
 
-    const newNodes: Node[] = [];
+    store.tasks = tasks;
+
+    const newNodes: Node<Task>[] = [];
     const newEdges: Edge[] = [];
     for (const task of tasks) {
         newNodes.push({
@@ -49,6 +52,8 @@ const createNewTask = async (x: number, y: number, parentNodeId: number) => {
         pos_y: y,
         parent_id: parentNodeId,
     });
+
+    store.tasks.push(task);
 
     nodes.push({
         id: task.id.toString(),
