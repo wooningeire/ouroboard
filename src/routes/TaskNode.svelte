@@ -120,14 +120,15 @@ const updateHrRemaining = async (newHrRemaining: number) => {
 
 
 <style lang="scss">
+task-title {
+    font-size: 1.125rem;
+    width: 10.5rem;
+}
+
 task-node {
     display: flex;
     flex-direction: column;
     gap: 1rem;
     text-align: left;
-}
-
-task-title {
-    width: 20ch;
 }
 </style>

@@ -8,6 +8,7 @@ import { api } from "$api/client";
 import * as store from "./store.svelte";
 import { onMount, tick } from "svelte";
 import * as DropdownMenu from "@/ui/dropdown-menu";
+import AncestryEdge from "./AncestryEdge.svelte";
 
 const { fitView } = useSvelteFlow();
 
@@ -105,7 +106,7 @@ const onConnect: OnConnect = async (connection: Connection) => {
 
     const task = store.getTask(childId);
     if (task !== undefined) {
-        task.base.parent_id = parentId;
+        store.setNewTaskParent(task.base, parentId);
     }
 
     await api.task.edit({
@@ -162,6 +163,9 @@ onMount(async () => {
     deleteKey={["Backspace", "Delete"]}
     nodeTypes={{
         task: TaskNode,
+    }}
+    edgeTypes={{
+        ancestry: AncestryEdge,
     }}
 >
     <Background />

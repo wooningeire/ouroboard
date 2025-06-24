@@ -9,13 +9,14 @@ export type AugmentedTask = {
     hrRemaining: () => number,
 };
 
-const state = $state({
-    tasks: new SvelteMap<number, AugmentedTask>(),
-    parentsToChildIds: new SvelteMap<number, SvelteSet<number>>(),
+const tasks = $state(new SvelteMap<number, AugmentedTask>());
+
+const parentsToChildIds = $state(new SvelteMap<number, SvelteSet<number>>());
+
+const derived = $derived({
+    tasks,
+    parentsToChildIds,
 });
-
-const derived = $derived(state);
-
 export const get = () => derived;
 
 
@@ -24,16 +25,16 @@ const computeHours = (task: Task) => {
         hrCompleted:
             (task.hoursHistory.at(-1)?.hr_completed ?? 0)
             + (
-                state.parentsToChildIds.get(task.id)?.values()
-                    .map(childId => state.tasks.get(childId)?.hrCompleted() ?? 0)
+                parentsToChildIds.get(task.id)?.values()
+                    .map(childId => tasks.get(childId)?.hrCompleted() ?? 0)
                     .reduce((a, b) => a + b, 0) 
                     ?? 0
             ),
         hrRemaining:
             (task.hoursHistory.at(-1)?.hr_remaining ?? 0)
             + (
-                state.parentsToChildIds.get(task.id)?.values()
-                    .map(childId => state.tasks.get(childId)?.hrRemaining() ?? 0)
+                parentsToChildIds.get(task.id)?.values()
+                    .map(childId => tasks.get(childId)?.hrRemaining() ?? 0)
                     .reduce((a, b) => a + b, 0) 
                     ?? 0
             ),
@@ -46,7 +47,7 @@ export const addTask = (task: Task) => {
     const hrCompleted = $derived(hours.hrCompleted);
     const hrRemaining = $derived(hours.hrRemaining);
 
-    state.tasks.set(task.id, {
+    tasks.set(task.id, {
         base: task,
         hrCompleted: () => hrCompleted,
         hrRemaining: () => hrRemaining,
@@ -54,37 +55,30 @@ export const addTask = (task: Task) => {
 
     if (task.parent_id === null) return;
 
-    const childIds = state.parentsToChildIds.get(task.parent_id);
+    const childIds = parentsToChildIds.get(task.parent_id);
     if (childIds !== undefined) {
         childIds.add(task.id);
     } else {
-        state.parentsToChildIds.set(task.parent_id, new SvelteSet([task.id]));
+        parentsToChildIds.set(task.parent_id, new SvelteSet([task.id]));
     }
 };
 
 export const getTask = (id: number) => {
-    return state.tasks.get(id);
+    return tasks.get(id);
 };
 
 export const delTask = (task: Task) => {
-    state.tasks.delete(task.id);
+    tasks.delete(task.id);
 
-    state.parentsToChildIds.delete(task.id);
+    parentsToChildIds.delete(task.id);
 
     if (task.parent_id === null) return;
 
-    const childIds = state.parentsToChildIds.get(task.parent_id);
+    const childIds = parentsToChildIds.get(task.parent_id);
     if (childIds !== undefined) {
         childIds.delete(task.id);
     }
 };
-
-// export const addEdge = (edge: {
-//     parentId: number,
-//     childId: number,
-// }) => {
-//     state.edges.add(edge);
-// };
 
 export const initializeTasks = (tasks: Task[]) => {
     for (const task of tasks) {
@@ -93,6 +87,24 @@ export const initializeTasks = (tasks: Task[]) => {
     }
 };
 
+export const setNewTaskParent = (task: Task, parentId: number | null) => {
+    if (task.parent_id === parentId) return;
+
+    if (task.parent_id !== null) {
+        parentsToChildIds.get(task.parent_id)?.delete(task.id);
+    }
+
+    task.parent_id = parentId;
+
+    if (parentId === null) return;
+
+    const childIds = parentsToChildIds.get(parentId);
+    if (childIds !== undefined) {
+        childIds.add(task.id);
+    } else {
+        parentsToChildIds.set(parentId, new SvelteSet([task.id]));
+    }
+};
 
 const layoutNodes = () => {
     const graph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
@@ -101,12 +113,12 @@ const layoutNodes = () => {
     const nodeWidth = 300;
     const nodeHeight = 150;
 
-    for (const [parentId, children] of state.parentsToChildIds) {
+    for (const [parentId, children] of parentsToChildIds) {
         for (const childId of children) {
             graph.setEdge(parentId.toString(), childId.toString());
         }
     }
-    for (const task of state.tasks.values()) {
+    for (const task of tasks.values()) {
         graph.setNode(task.base.id.toString(), {
             width: nodeWidth,
             height: nodeHeight,
@@ -116,7 +128,7 @@ const layoutNodes = () => {
     Dagre.layout(graph);
 
     return {
-        nodes: state.tasks.values()
+        nodes: tasks.values()
             .map(task => {
                 const {x,y} = graph.node(task.base.id.toString());
                 return {
@@ -133,11 +145,12 @@ const layoutNodes = () => {
             })
             .toArray(),
 
-        edges: state.parentsToChildIds.entries()
+        edges: parentsToChildIds.entries()
             .flatMap(([parentId, childIds]) => 
                 childIds.values()
                     .map(childId => ({
                         id: `e${parentId}-${childId}`,
+                        type: "ancestry",
                         source: parentId.toString(),
                         target: childId.toString(),
                     })

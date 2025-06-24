@@ -7,22 +7,12 @@
 <DropdownMenuPrimitive.Trigger
 	bind:ref
 	data-slot="dropdown-menu-trigger"
-	class="dropdown-menu-trigger"
+	class="dropdown-menu-trigger ouroboard-button"
 	{...restProps}
 />
 
 <style lang="scss">
 :global(.dropdown-menu-trigger) {
 	height: max-content;
-
-	padding: 0.25rem;
-	font-weight: 400;
-
-	border: 1px solid #0000001f;
-
-	&:hover {
-		cursor: pointer;
-		background: #0000000f;
-	}
 }
 </style>
