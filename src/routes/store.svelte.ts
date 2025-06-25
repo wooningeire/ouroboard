@@ -1,17 +1,55 @@
-import type { api, Task } from "$api/client";
-import type { Node, Edge } from "@xyflow/svelte";
+import type { Task } from "$api/client";
 import Dagre from "@dagrejs/dagre";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
+
+type Position = { x: number; y: number };
 
 export type AugmentedTask = {
     base: Task,
     hrCompleted: () => number,
     hrRemaining: () => number,
+    posData: PosData,
 };
 
-const tasks = $state(new SvelteMap<number, AugmentedTask>());
+class PosData {
+    #isFirst: boolean = true;
+    #last: Position;
+    #target: Position;
+    #current: Position;
+
+    constructor(last: Position, target: Position) {
+        this.#last = last;
+        this.#target = target;
+        this.#current = $derived(this.computeCurrent());
+    }
+
+    get current() {
+        return this.#current;
+    }
+
+    private computeCurrent() {
+        return {
+            x: this.#last.x + (this.#target.x - this.#last.x) * nodePosAnimProgress,
+            y: this.#last.y + (this.#target.y - this.#last.y) * nodePosAnimProgress,
+        };
+    }
+
+    setTarget(newTarget: Position) {
+        if (this.#isFirst) {
+            [this.#last, this.#target] = [newTarget, newTarget];
+            this.#isFirst = false;
+        } else {
+            [this.#last, this.#target] = [this.current, newTarget];
+        }
+    }
+}
+
+const tasks = $state(new SvelteMap<number,  AugmentedTask>());
 
 const parentsToChildIds = $state(new SvelteMap<number, SvelteSet<number>>());
+
+let nodePosAnimStartTime = Date.now();
+let nodePosAnimProgress = $state(1);
 
 const derived = $derived({
     tasks,
@@ -47,10 +85,13 @@ export const addTask = (task: Task) => {
     const hrCompleted = $derived(hours.hrCompleted);
     const hrRemaining = $derived(hours.hrRemaining);
 
+    const posData = $state(new PosData({x: 0, y: 0}, {x: 0, y: 0}));
+
     tasks.set(task.id, {
         base: task,
         hrCompleted: () => hrCompleted,
         hrRemaining: () => hrRemaining,
+        posData,
     });
 
     if (task.parent_id === null) return;
@@ -69,7 +110,6 @@ export const getTask = (id: number) => {
 
 export const delTask = (task: Task) => {
     tasks.delete(task.id);
-
     parentsToChildIds.delete(task.id);
 
     if (task.parent_id === null) return;
@@ -106,7 +146,23 @@ export const setNewTaskParent = (task: Task, parentId: number | null) => {
     }
 };
 
-const layoutNodes = () => {
+const animate = () => {
+    nodePosAnimProgress = Math.min((Date.now() - nodePosAnimStartTime) / 300, 1);
+    updateNodePositions();
+    if (nodePosAnimProgress >= 1) return;
+    
+    requestAnimationFrame(animate);
+};
+
+export const animateNodePositions = () => {
+    nodePosAnimStartTime = Date.now();
+    nodePosAnimProgress = 0;
+    updateNodePositions();
+
+    requestAnimationFrame(animate);
+};
+
+const updateNodePositions = () => {
     const graph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
     graph.setGraph({ rankdir: "LR" });
 
@@ -127,40 +183,45 @@ const layoutNodes = () => {
 
     Dagre.layout(graph);
 
-    return {
-        nodes: tasks.values()
-            .map(task => {
-                const {x,y} = graph.node(task.base.id.toString());
-                return {
-                    id: task.base.id.toString(),
-                    type: "task",
-                    position: {
-                        // We are shifting the dagre node position (anchor=center center) to the top left
-                        // so it matches the Svelte Flow node anchor point (top left).
-                        x: x - nodeWidth / 2,
-                        y: y - nodeHeight / 2,
-                    },
-                    data: task,
-                };
-            })
-            .toArray(),
 
-        edges: parentsToChildIds.entries()
-            .flatMap(([parentId, childIds]) => 
-                childIds.values()
-                    .map(childId => ({
-                        id: `e${parentId}-${childId}`,
-                        type: "ancestry",
-                        source: parentId.toString(),
-                        target: childId.toString(),
-                    })
-                )
-            )
-            .toArray(),
-    };
+    for (const task of tasks.values()) {
+        const {x, y} = graph.node(task.base.id.toString());
 
+        task.posData.setTarget({
+            x: x - nodeWidth / 2,
+            y: y - nodeHeight / 2,
+        });
+    }
 };
 
-const flowObjects = $derived(layoutNodes());
+const flowNodes = $derived.by(() => {
+    return tasks.values()
+        .filter(task => !task.base.hidden)
+        .map(task => {
+            return {
+                id: task.base.id.toString(),
+                type: "task",
+                position: task.posData.current,
+                data: task,
+            };
+        })
+        .toArray();
+});
 
-export const getFlowObjects = () => flowObjects;
+const flowEdges = $derived.by(() => {
+    return parentsToChildIds.entries()
+        .flatMap(([parentId, childIds]) =>
+            childIds.values()
+                .map(childId => ({
+                    id: `e${parentId}-${childId}`,
+                    type: "ancestry",
+                    source: parentId.toString(),
+                    target: childId.toString(),
+                })
+            )
+        )
+        .toArray();
+});
+
+export const getFlowNodes = () => flowNodes;
+export const getFlowEdges = () => flowEdges;

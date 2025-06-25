@@ -12,7 +12,8 @@ import AncestryEdge from "./AncestryEdge.svelte";
 
 const { fitView } = useSvelteFlow();
 
-const {nodes, edges} = $derived(store.getFlowObjects());
+const nodes = $derived(store.getFlowNodes());
+const edges = $derived(store.getFlowEdges());
 
 let contextMenuOpen = $state(false);
 let contextMenuPosition = $state({ x: 0, y: 0 });
@@ -39,6 +40,7 @@ const createNewTask = async (parentNodeId: number | null=null) => {
     });
 
     store.addTask(placeholderTask);
+    store.animateNodePositions();
 
     const task = $state(await api.task.new({
         parent_id: parentNodeId,
@@ -46,6 +48,7 @@ const createNewTask = async (parentNodeId: number | null=null) => {
 
     store.delTask(placeholderTask);
     store.addTask(task);
+    store.animateNodePositions();
 };
 
 const createNewRootTask = async () => {
@@ -108,6 +111,7 @@ const onConnect: OnConnect = async (connection: Connection) => {
     if (task !== undefined) {
         store.setNewTaskParent(task.base, parentId);
     }
+    store.animateNodePositions();
 
     await api.task.edit({
         id: childId,
@@ -131,6 +135,7 @@ const onDelete: OnDelete = async ({ nodes: deletedNodes }) => {
         if (task === undefined) continue;
         store.delTask(task.base);
     }
+    store.animateNodePositions();
 
     await api.task.trash({
         ids: deletedNodes.map(node => Number(node.id)),
@@ -142,6 +147,7 @@ onMount(async () => {
     const {tasks} = await api.task.list({});
 
     store.initializeTasks(tasks);
+    store.animateNodePositions();
 
     await tick();
 
