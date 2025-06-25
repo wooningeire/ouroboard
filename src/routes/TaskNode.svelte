@@ -6,10 +6,17 @@ import * as DropdownMenu from "@/ui/dropdown-menu";
 import { Button } from "@/ui/button";
 import Priority, { labels } from "./Priority.svelte";
 import Hours from "./Hours.svelte";
-    import type { TaskData } from "./store.svelte";
-    import { onMount } from "svelte";
+import type { TaskData } from "./store.svelte";
 
-const { id, data: taskData }: NodeProps<Node<TaskData>> = $props();
+const {
+    id,
+    selected,
+    data: taskData,
+}: NodeProps<Node<TaskData>> = $props();
+
+const expanded = $derived(taskData.task.always_expanded || selected)
+
+
 
 const saveTitle = async (title: string) => {
     await api.task.edit({
@@ -33,6 +40,7 @@ const updatePriority = async (newPriorityString: string) => {
 
 const hrCompleted = $derived(taskData.task.hoursHistory.at(-1)?.hr_completed ?? 0);
 const hrRemaining = $derived(taskData.task.hoursHistory.at(-1)?.hr_remaining ?? 0);
+const done = $derived(taskData.hrCompleted > 0 && taskData.hrRemaining === 0);
 
 const updateHoursHistory = async () => {
     taskData.task.hoursHistory = await api.task.updateHours({
@@ -65,12 +73,16 @@ const updateHrRemaining = async (newHrRemaining: number) => {
 
 </script>
 
-<task-node>
+<task-node
+    class:expanded
+    class:done
+>
     <task-title>
         <TextEntry
             value={taskData.task.title}
             onValueChange={title => saveTitle(title)}
             placeholder="Task title"
+            disabled={!expanded}
         />
     </task-title>
 
@@ -112,6 +124,8 @@ const updateHrRemaining = async (newHrRemaining: number) => {
 
         hrCompletedTotal={taskData.hrCompleted}
         hrRemainingTotal={taskData.hrRemaining}
+
+        {expanded}
     />
 </task-node>
 
@@ -122,14 +136,33 @@ const updateHrRemaining = async (newHrRemaining: number) => {
 <style lang="scss">
 task-node {
     display: flex;
-    flex-direction: column;
     gap: 0.5rem;
+    align-items: center;
     text-align: left;
     padding: 0.5rem;
+
+    &.expanded {
+        flex-direction: column;
+        align-items: stretch;
+
+        task-title {
+            width: 12rem;
+        }
+    }
+
+    &.done {
+        task-title {
+            text-decoration: line-through;
+        }
+    }
+
+    &:not(.expanded).done {
+        opacity: 0.25;
+    }
 }
 
 task-title {
+    max-width: 12rem;
     font-size: 1.125rem;
-    width: 12rem;
 }
 </style>

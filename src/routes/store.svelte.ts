@@ -190,30 +190,31 @@ const updateNodePositions = () => {
     const graph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
     graph.setGraph({ rankdir: "LR" });
 
-    const nodeWidth = 300;
-    const nodeHeight = 150;
+    const nodeWidth = 400;
+    const nodeHeightExpanded = 0;
+    const nodeHeightCollapsed = -2;
 
     for (const [parentId, children] of parentsToChildIds) {
         for (const childId of children) {
             graph.setEdge(parentId.toString(), childId.toString());
         }
     }
-    for (const task of tasks.values()) {
-        graph.setNode(task.task.id.toString(), {
+    for (const taskData of tasks.values()) {
+        graph.setNode(taskData.task.id.toString(), {
             width: nodeWidth,
-            height: nodeHeight,
+            height: taskData.task.always_expanded ? nodeHeightExpanded : nodeHeightCollapsed,
         });
     }
 
     Dagre.layout(graph);
 
 
-    for (const task of tasks.values()) {
-        const {x, y} = graph.node(task.task.id.toString());
+    for (const taskData of tasks.values()) {
+        const {x, y} = graph.node(taskData.task.id.toString());
 
-        task.posData.setTarget({
+        taskData.posData.setTarget({
             x: x - nodeWidth / 2,
-            y: y - nodeHeight / 2,
+            y: y - (taskData.task.always_expanded ? nodeHeightExpanded : nodeHeightCollapsed) / 2,
         });
     }
 };

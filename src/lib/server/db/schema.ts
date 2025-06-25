@@ -9,10 +9,11 @@ export const taskTable = pgTable("task", {
 	target_end: timestamp({withTimezone: true}),
 	hard_end: timestamp({withTimezone: true}),
 	priority: integer(),
-	clear: boolean().notNull().default(false),
 	parent_id: integer(),
+	clear: boolean().notNull().default(false),
 	trashed: boolean().notNull().default(false),
 	hidden: boolean().notNull().default(false),
+	always_expanded: boolean().notNull().default(false),
 }, table => [
 	foreignKey({
 		columns: [table.parent_id],
