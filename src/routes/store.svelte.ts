@@ -171,7 +171,7 @@ export const setNewTaskParent = (task: Task, parentId: number | null) => {
 };
 
 const animate = () => {
-    nodePosAnimProgress = Math.min((Date.now() - nodePosAnimStartTime) / 300, 1);
+    nodePosAnimProgress = Math.min((Date.now() - nodePosAnimStartTime) / 150, 1);
     updateNodePositions();
     if (nodePosAnimProgress >= 1) return;
     

@@ -16,7 +16,7 @@ const {
     data: taskData,
 }: NodeProps<Node<TaskData>> = $props();
 
-const expanded = $derived(taskData.task.always_expanded || selected)
+const expanded = $derived(taskData.task.always_expanded || selected);
 
 
 
@@ -73,6 +73,17 @@ const updateHrRemaining = async (newHrRemaining: number) => {
 };
 
 
+const updateHideChildren = async (newHideChildren: boolean) => {
+    taskData.task.hide_children = newHideChildren;
+    store.animateNodePositions();
+
+    await api.task.edit({
+        id: Number(id),
+        hide_children: newHideChildren,
+    });
+};
+
+
 let taskEl = $state<HTMLUnknownElement>();
 const elHeight = $derived.by(() => {
     void taskData.task.title;
@@ -95,19 +106,13 @@ $effect(() => {
 >
     {#if taskData.task.hide_children}
         <Button
-            onclick={() => {
-                taskData.task.hide_children = false;
-                store.animateNodePositions();
-            }}
+            onclick={() => updateHideChildren(false)}
         >
             &#x2192;
         </Button>
     {:else}
         <Button
-            onclick={() => {
-                taskData.task.hide_children = true;
-                store.animateNodePositions();
-            }}
+            onclick={() => updateHideChildren(true)}
         >
             &#x2193;
         </Button>

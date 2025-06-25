@@ -9,17 +9,20 @@ const endpoint = post(async ({
     title,
     parent_id,
     priority,
+    hide_children,
 }: {
     id: number,
     title?: string,
     parent_id?: number | null,
     priority?: number | null,
+    hide_children?: boolean,
 }) => {
     const rows = await db.update(taskTable)
         .set({
             title,
             parent_id,
             priority,
+            hide_children,
         })
         .where(eq(taskTable.id, id))
         .returning();
