@@ -21,7 +21,15 @@ $effect(() => {
     localValue = value;
 });
 
+
+let focused = $state(false);
+const handleFocus = () => {
+    focused = true;
+};
+
 const handleBlur = () => {
+    focused = false;
+
     if (localValue === value) return;
 
     if (!valid) {
@@ -47,8 +55,6 @@ const placeholderWidth = $derived.by(() => {
     void showsPlaceholder;
     return placeholderEl?.offsetWidth ?? 0;
 });
-
-$inspect(placeholderWidth);
 </script>
 
 <text-entry-container
@@ -65,10 +71,12 @@ $inspect(placeholderWidth);
         contenteditable
         role="textbox"
         tabindex="0"
+        onfocus={handleFocus}
         onblur={handleBlur}
         onkeydown={handleKeydown}
         bind:textContent={localValue}
         {disabled}
+        onclick={(event: PointerEvent) => focused && event.preventDefault()}
         style:--placeholder-width="{placeholderWidth}px"
     ></text-entry>
 </text-entry-container>

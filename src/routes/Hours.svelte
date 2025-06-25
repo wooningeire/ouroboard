@@ -37,7 +37,13 @@ const fractionComplete = $derived(hrCompletedTotal / hrEstimateTotal);
             max={hrEstimateTotal}
         />
 
-        {(isNaN(fractionComplete) ? 100 : fractionComplete * 100).toFixed(expanded ? 2 : 0)}%{#if !expanded}&#x2002;&#x2022;&#x2002;{hrEstimateTotal}{/if}
+        <hours-summary-text>
+            <span>{(isNaN(fractionComplete) ? 100 : fractionComplete * 100).toFixed(expanded ? 2 : 0)}%</span>
+            {#if !expanded}
+                <span>&#x2022;</span>
+                <span>{hrCompletedTotal} / {hrRemainingTotal} / {hrEstimateTotal}</span>
+            {/if}
+        </hours-summary-text>
     </hours-summary>
 
     {#if expanded}
@@ -77,7 +83,7 @@ hours-tracker {
     text-align: center;
 
     &:not(.expanded) {
-        min-width: 5rem;
+        min-width: 10rem;
     }
 }
 
@@ -86,6 +92,17 @@ total-hours-display {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     grid-template-rows: auto auto auto;
+}
+
+hours-summary {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+hours-summary-text {
+    display: flex;
+    gap: 0.375rem;
 }
 
 big-number {

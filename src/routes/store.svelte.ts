@@ -45,6 +45,7 @@ export type TaskData = {
     hrRemaining: number,
     posData: PosData,
     invisible: boolean,
+    elHeight: number,
 };
 
 class TaskDataObj {
@@ -52,6 +53,7 @@ class TaskDataObj {
     #hrCompleted: number;
     #hrRemaining: number;
     #posData: PosData;
+    elHeight: number;
 
     constructor(task: Task) {
         this.#task = task;
@@ -79,6 +81,9 @@ class TaskDataObj {
         this.#hrRemaining = $derived(hours.hrRemaining);
         
         this.#posData = $state(new PosData({x: 0, y: 0}, {x: 0, y: 0}));
+
+
+        this.elHeight = 0;
     }
 
     get task() {
@@ -190,9 +195,7 @@ const updateNodePositions = () => {
     const graph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
     graph.setGraph({ rankdir: "LR" });
 
-    const nodeWidth = 400;
-    const nodeHeightExpanded = 0;
-    const nodeHeightCollapsed = -2;
+    const nodeWidth = 450;
 
     for (const [parentId, children] of parentsToChildIds) {
         for (const childId of children) {
@@ -202,7 +205,7 @@ const updateNodePositions = () => {
     for (const taskData of tasks.values()) {
         graph.setNode(taskData.task.id.toString(), {
             width: nodeWidth,
-            height: taskData.task.always_expanded ? nodeHeightExpanded : nodeHeightCollapsed,
+            height: taskData.elHeight,
         });
     }
 
@@ -214,7 +217,7 @@ const updateNodePositions = () => {
 
         taskData.posData.setTarget({
             x: x - nodeWidth / 2,
-            y: y - (taskData.task.always_expanded ? nodeHeightExpanded : nodeHeightCollapsed) / 2,
+            y: y - taskData.elHeight / 2,
         });
     }
 };

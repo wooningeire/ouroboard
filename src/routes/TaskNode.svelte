@@ -7,6 +7,8 @@ import { Button } from "@/ui/button";
 import Priority, { labels } from "./Priority.svelte";
 import Hours from "./Hours.svelte";
 import type { TaskData } from "./store.svelte";
+import * as store from "./store.svelte";
+import { tick } from "svelte";
 
 const {
     id,
@@ -71,11 +73,25 @@ const updateHrRemaining = async (newHrRemaining: number) => {
 };
 
 
+let taskEl = $state<HTMLUnknownElement>();
+const elHeight = $derived.by(() => {
+    void taskData.task.title;
+    return taskEl?.offsetHeight ?? 0;
+});
+
+$effect(() => {
+    taskData.elHeight = elHeight - 45;
+
+    tick().then(() => {
+        store.animateNodePositions();
+    });
+});
 </script>
 
 <task-node
     class:expanded
     class:done
+    bind:this={taskEl}
 >
     <task-title>
         <TextEntry
@@ -157,7 +173,9 @@ task-node {
     }
 
     &:not(.expanded).done {
-        opacity: 0.25;
+        task-title {
+            opacity: 0.25;
+        }
     }
 }
 
