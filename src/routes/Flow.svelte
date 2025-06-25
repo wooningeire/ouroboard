@@ -42,13 +42,13 @@ const createNewTask = async (parentNodeId: number | null=null) => {
     store.addTask(placeholderTask);
     store.animateNodePositions();
 
-    const task = $state(await api.task.new({
+    const task = await api.task.new({
         parent_id: parentNodeId,
-    }));
+    });
 
     store.delTask(placeholderTask);
-    store.addTask(task);
-    store.animateNodePositions();
+    Object.assign(placeholderTask, task);
+    store.addTask(placeholderTask);
 };
 
 const createNewRootTask = async () => {
@@ -109,7 +109,7 @@ const onConnect: OnConnect = async (connection: Connection) => {
 
     const task = store.getTask(childId);
     if (task !== undefined) {
-        store.setNewTaskParent(task.base, parentId);
+        store.setNewTaskParent(task.task, parentId);
     }
     store.animateNodePositions();
 
@@ -133,7 +133,7 @@ const onDelete: OnDelete = async ({ nodes: deletedNodes }) => {
     for (const node of deletedNodes) {
         const task = store.getTask(Number(node.id));
         if (task === undefined) continue;
-        store.delTask(task.base);
+        store.delTask(task.task);
     }
     store.animateNodePositions();
 

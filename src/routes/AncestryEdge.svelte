@@ -28,7 +28,7 @@ const clearParentId = async () => {
 
     const task = store.getTask(childId);
     if (task !== undefined) {
-        store.setNewTaskParent(task.base, null);
+        store.setNewTaskParent(task.task, null);
     }
 
     await api.task.edit({

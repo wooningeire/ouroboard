@@ -4,13 +4,6 @@ import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
 type Position = { x: number; y: number };
 
-export type AugmentedTask = {
-    base: Task,
-    hrCompleted: () => number,
-    hrRemaining: () => number,
-    posData: PosData,
-};
-
 class PosData {
     #isFirst: boolean = true;
     #last: Position;
@@ -44,7 +37,70 @@ class PosData {
     }
 }
 
-const tasks = $state(new SvelteMap<number,  AugmentedTask>());
+const tasks = $state(new SvelteMap<number, TaskData>());
+
+export type TaskData = {
+    task: Task,
+    hrCompleted: number,
+    hrRemaining: number,
+    posData: PosData,
+    invisible: boolean,
+};
+
+class TaskDataObj {
+    #task: Task;
+    #hrCompleted: number;
+    #hrRemaining: number;
+    #posData: PosData;
+
+    constructor(task: Task) {
+        this.#task = task;
+
+        const hours = $derived({
+            hrCompleted:
+                (task.hoursHistory.at(-1)?.hr_completed ?? 0)
+                + (
+                    parentsToChildIds.get(task.id)?.values()
+                        .map(childId => tasks.get(childId)?.hrCompleted ?? 0)
+                        .reduce((a, b) => a + b, 0) 
+                        ?? 0
+                ),
+            hrRemaining:
+                (task.hoursHistory.at(-1)?.hr_remaining ?? 0)
+                + (
+                    parentsToChildIds.get(task.id)?.values()
+                        .map(childId => tasks.get(childId)?.hrRemaining ?? 0)
+                        .reduce((a, b) => a + b, 0) 
+                        ?? 0
+                ),
+        });
+
+        this.#hrCompleted = $derived(hours.hrCompleted);
+        this.#hrRemaining = $derived(hours.hrRemaining);
+        
+        this.#posData = $state(new PosData({x: 0, y: 0}, {x: 0, y: 0}));
+    }
+
+    get task() {
+        return this.#task;
+    }
+
+    get hrCompleted() {
+        return this.#hrCompleted;
+    }
+
+    get hrRemaining() {
+        return this.#hrRemaining;
+    }
+
+    get posData() {
+        return this.#posData;
+    }
+
+    get invisible() {
+        return this.#task.hidden || this.#task.trashed || this.#task.clear;
+    }
+}
 
 const parentsToChildIds = $state(new SvelteMap<number, SvelteSet<number>>());
 
@@ -58,41 +114,9 @@ const derived = $derived({
 export const get = () => derived;
 
 
-const computeHours = (task: Task) => {
-    return {
-        hrCompleted:
-            (task.hoursHistory.at(-1)?.hr_completed ?? 0)
-            + (
-                parentsToChildIds.get(task.id)?.values()
-                    .map(childId => tasks.get(childId)?.hrCompleted() ?? 0)
-                    .reduce((a, b) => a + b, 0) 
-                    ?? 0
-            ),
-        hrRemaining:
-            (task.hoursHistory.at(-1)?.hr_remaining ?? 0)
-            + (
-                parentsToChildIds.get(task.id)?.values()
-                    .map(childId => tasks.get(childId)?.hrRemaining() ?? 0)
-                    .reduce((a, b) => a + b, 0) 
-                    ?? 0
-            ),
-    };
-};
-
 export const addTask = (task: Task) => {
-    const hours = $derived(computeHours(task));
-
-    const hrCompleted = $derived(hours.hrCompleted);
-    const hrRemaining = $derived(hours.hrRemaining);
-
-    const posData = $state(new PosData({x: 0, y: 0}, {x: 0, y: 0}));
-
-    tasks.set(task.id, {
-        base: task,
-        hrCompleted: () => hrCompleted,
-        hrRemaining: () => hrRemaining,
-        posData,
-    });
+    const taskData = $state(new TaskDataObj(task));
+    tasks.set(task.id, taskData);
 
     if (task.parent_id === null) return;
 
@@ -121,10 +145,10 @@ export const delTask = (task: Task) => {
 };
 
 export const initializeTasks = (tasks: Task[]) => {
-    for (const task of tasks) {
+    return Promise.all(tasks.map(task => {
         const taskProxy = $state(task);
-        addTask(taskProxy);
-    }
+        return addTask(taskProxy);
+    }));
 };
 
 export const setNewTaskParent = (task: Task, parentId: number | null) => {
@@ -175,7 +199,7 @@ const updateNodePositions = () => {
         }
     }
     for (const task of tasks.values()) {
-        graph.setNode(task.base.id.toString(), {
+        graph.setNode(task.task.id.toString(), {
             width: nodeWidth,
             height: nodeHeight,
         });
@@ -185,7 +209,7 @@ const updateNodePositions = () => {
 
 
     for (const task of tasks.values()) {
-        const {x, y} = graph.node(task.base.id.toString());
+        const {x, y} = graph.node(task.task.id.toString());
 
         task.posData.setTarget({
             x: x - nodeWidth / 2,
@@ -195,14 +219,38 @@ const updateNodePositions = () => {
 };
 
 const flowNodes = $derived.by(() => {
+    const hasInvisibleAncestorResults = new Map<number, boolean>();
+
+    const hasInvisibleAncestor = (taskData: TaskData): boolean => {
+        const savedResult = hasInvisibleAncestorResults.get(taskData.task.id);
+        if (savedResult !== undefined) {
+            return savedResult;
+        }
+
+
+        let result: boolean;
+
+        if (taskData.task.parent_id === null) {
+            result = false;
+        } else if (taskData.invisible) {
+            result = true;
+        } else {
+            result = hasInvisibleAncestor(tasks.get(taskData.task.parent_id)!);
+        }
+        
+        hasInvisibleAncestorResults.set(taskData.task.id, result);
+        return result;
+    };
+
+
     return tasks.values()
-        .filter(task => !task.base.hidden)
-        .map(task => {
+        .filter(taskData => !hasInvisibleAncestor(taskData))
+        .map(taskData => {
             return {
-                id: task.base.id.toString(),
+                id: taskData.task.id.toString(),
                 type: "task",
-                position: task.posData.current,
-                data: task,
+                position: taskData.posData.current,
+                data: taskData,
             };
         })
         .toArray();

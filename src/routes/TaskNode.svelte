@@ -6,10 +6,10 @@ import * as DropdownMenu from "@/ui/dropdown-menu";
 import { Button } from "@/ui/button";
 import Priority, { labels } from "./Priority.svelte";
 import Hours from "./Hours.svelte";
-    import type { AugmentedTask } from "./store.svelte";
+    import type { TaskData } from "./store.svelte";
     import { onMount } from "svelte";
 
-const { id, data: task }: NodeProps<Node<AugmentedTask>> = $props();
+const { id, data: taskData }: NodeProps<Node<TaskData>> = $props();
 
 const saveTitle = async (title: string) => {
     await api.task.edit({
@@ -18,12 +18,12 @@ const saveTitle = async (title: string) => {
     });
 };
 
-const priority = $derived(task.base.priority);
+const priority = $derived(taskData.task.priority);
 const priorityString = $derived(priority?.toString() ?? "");
 
 const updatePriority = async (newPriorityString: string) => {
     const newPriority = newPriorityString === "" ? null : Number(newPriorityString);
-    task.base.priority = newPriority;
+    taskData.task.priority = newPriority;
 
     await api.task.edit({
         id: Number(id),
@@ -31,11 +31,11 @@ const updatePriority = async (newPriorityString: string) => {
     });
 };
 
-const hrCompleted = $derived(task.base.hoursHistory.at(-1)?.hr_completed ?? 0);
-const hrRemaining = $derived(task.base.hoursHistory.at(-1)?.hr_remaining ?? 0);
+const hrCompleted = $derived(taskData.task.hoursHistory.at(-1)?.hr_completed ?? 0);
+const hrRemaining = $derived(taskData.task.hoursHistory.at(-1)?.hr_remaining ?? 0);
 
 const updateHoursHistory = async () => {
-    task.base.hoursHistory = await api.task.updateHours({
+    taskData.task.hoursHistory = await api.task.updateHours({
         id: Number(id),
         hr_completed: hrCompleted,
         hr_remaining: hrRemaining,
@@ -43,7 +43,7 @@ const updateHoursHistory = async () => {
 };
 
 const updateHrCompleted = async (newHrCompleted: number) => {
-    task.base.hoursHistory.push({
+    taskData.task.hoursHistory.push({
         created_at: new Date(),
         hr_completed: newHrCompleted,
         hr_remaining: hrRemaining,
@@ -53,7 +53,7 @@ const updateHrCompleted = async (newHrCompleted: number) => {
 };
 
 const updateHrRemaining = async (newHrRemaining: number) => {
-    task.base.hoursHistory.push({
+    taskData.task.hoursHistory.push({
         created_at: new Date(),
         hr_completed: hrCompleted,
         hr_remaining: newHrRemaining,
@@ -68,7 +68,7 @@ const updateHrRemaining = async (newHrRemaining: number) => {
 <task-node>
     <task-title>
         <TextEntry
-            value={task.base.title}
+            value={taskData.task.title}
             onValueChange={title => saveTitle(title)}
             placeholder="Task title"
         />
@@ -110,8 +110,8 @@ const updateHrRemaining = async (newHrRemaining: number) => {
         onHrCompletedChange={updateHrCompleted}
         onHrRemainingChange={updateHrRemaining}
 
-        hrCompletedTotal={task.hrCompleted()}
-        hrRemainingTotal={task.hrRemaining()}
+        hrCompletedTotal={taskData.hrCompleted}
+        hrRemainingTotal={taskData.hrRemaining}
     />
 </task-node>
 
@@ -120,15 +120,16 @@ const updateHrRemaining = async (newHrRemaining: number) => {
 
 
 <style lang="scss">
-task-title {
-    font-size: 1.125rem;
-    width: 10.5rem;
-}
-
 task-node {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.5rem;
     text-align: left;
+    padding: 0.5rem;
+}
+
+task-title {
+    font-size: 1.125rem;
+    width: 12rem;
 }
 </style>
