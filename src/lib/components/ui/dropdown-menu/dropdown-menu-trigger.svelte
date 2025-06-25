@@ -7,12 +7,9 @@
 <DropdownMenuPrimitive.Trigger
 	bind:ref
 	data-slot="dropdown-menu-trigger"
-	class="dropdown-menu-trigger ouroboard-button"
+	class="ouroboard-button"
 	{...restProps}
 />
 
 <style lang="scss">
-:global(.dropdown-menu-trigger) {
-	height: max-content;
-}
 </style>

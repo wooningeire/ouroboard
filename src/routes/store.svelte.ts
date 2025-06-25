@@ -44,7 +44,6 @@ export type TaskData = {
     hrCompleted: number,
     hrRemaining: number,
     posData: PosData,
-    invisible: boolean,
     elHeight: number,
 };
 
@@ -100,10 +99,6 @@ class TaskDataObj {
 
     get posData() {
         return this.#posData;
-    }
-
-    get invisible() {
-        return this.#task.hidden || this.#task.trashed || this.#task.clear;
     }
 }
 
@@ -195,14 +190,16 @@ const updateNodePositions = () => {
     const graph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
     graph.setGraph({ rankdir: "LR" });
 
-    const nodeWidth = 450;
+    const nodeWidth = 500;
 
     for (const [parentId, children] of parentsToChildIds) {
         for (const childId of children) {
+            if (!visibleTasks.has(parentId) || !visibleTasks.has(childId)) continue;
+
             graph.setEdge(parentId.toString(), childId.toString());
         }
     }
-    for (const taskData of tasks.values()) {
+    for (const taskData of visibleTasks.values()) {
         graph.setNode(taskData.task.id.toString(), {
             width: nodeWidth,
             height: taskData.elHeight,
@@ -212,7 +209,7 @@ const updateNodePositions = () => {
     Dagre.layout(graph);
 
 
-    for (const taskData of tasks.values()) {
+    for (const taskData of visibleTasks.values()) {
         const {x, y} = graph.node(taskData.task.id.toString());
 
         taskData.posData.setTarget({
@@ -222,7 +219,7 @@ const updateNodePositions = () => {
     }
 };
 
-const flowNodes = $derived.by(() => {
+const visibleTasks = $derived.by(() => {
     const hasInvisibleAncestorResults = new Map<number, boolean>();
 
     const hasInvisibleAncestor = (taskData: TaskData): boolean => {
@@ -236,10 +233,18 @@ const flowNodes = $derived.by(() => {
 
         if (taskData.task.parent_id === null) {
             result = false;
-        } else if (taskData.invisible) {
+        } else if (taskData.task.clear || taskData.task.trashed) {
             result = true;
         } else {
-            result = hasInvisibleAncestor(tasks.get(taskData.task.parent_id)!);
+            const parent = tasks.get(taskData.task.parent_id);
+
+            if (parent === undefined) {
+                result = true;
+            } else if (parent.task.hide_children) {
+                result = true;
+            } else {
+                result = hasInvisibleAncestor(parent);
+            }
         }
         
         hasInvisibleAncestorResults.set(taskData.task.id, result);
@@ -247,8 +252,15 @@ const flowNodes = $derived.by(() => {
     };
 
 
-    return tasks.values()
-        .filter(taskData => !hasInvisibleAncestor(taskData))
+    return new Map(
+        tasks.values()
+            .filter(taskData => !hasInvisibleAncestor(taskData))
+            .map(taskData => [taskData.task.id, taskData])
+    );
+});
+
+const flowNodes = $derived.by(() => {
+    return visibleTasks.values()
         .map(taskData => {
             return {
                 id: taskData.task.id.toString(),

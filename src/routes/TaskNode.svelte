@@ -93,6 +93,26 @@ $effect(() => {
     class:done
     bind:this={taskEl}
 >
+    {#if taskData.task.hide_children}
+        <Button
+            onclick={() => {
+                taskData.task.hide_children = false;
+                store.animateNodePositions();
+            }}
+        >
+            &#x2192;
+        </Button>
+    {:else}
+        <Button
+            onclick={() => {
+                taskData.task.hide_children = true;
+                store.animateNodePositions();
+            }}
+        >
+            &#x2193;
+        </Button>
+    {/if}
+
     <task-title>
         <TextEntry
             value={taskData.task.title}

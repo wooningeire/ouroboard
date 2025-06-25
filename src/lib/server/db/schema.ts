@@ -12,7 +12,7 @@ export const taskTable = pgTable("task", {
 	parent_id: integer(),
 	clear: boolean().notNull().default(false),
 	trashed: boolean().notNull().default(false),
-	hidden: boolean().notNull().default(false),
+	hide_children: boolean().notNull().default(false),
 	always_expanded: boolean().notNull().default(false),
 }, table => [
 	foreignKey({

@@ -31,7 +31,7 @@ const createNewTask = async (parentNodeId: number | null=null) => {
         clear: false,
         parent_id: parentNodeId,
         trashed: false,
-        hidden: false,
+        hide_children: false,
         always_expanded: false,
         hoursHistory: [{
             created_at: new Date(),
