@@ -10,6 +10,9 @@ import type { TaskData } from "./store.svelte";
 import * as store from "./store.svelte";
 import { tick } from "svelte";
 
+import collapsedNodeSvg from "$lib/assets/collapsed-node.svg";
+import uncollapsedNodeSvg from "$lib/assets/uncollapsed-node.svg";
+
 const {
     id,
     selected,
@@ -104,25 +107,18 @@ $effect(() => {
     class:done
     bind:this={taskEl}
 >
-    {#if taskData.task.hide_children}
-        <Button
-            onclick={event => {
-                event.stopPropagation();
-                updateHideChildren(false);
-            }}
-        >
-            &#x2192;
-        </Button>
-    {:else}
-        <Button
-            onclick={event => {
-                event.stopPropagation();
-                updateHideChildren(true);
-            }}
-        >
-            &#x2193;
-        </Button>
-    {/if}
+    <Button
+        onclick={event => {
+            event.stopPropagation();
+            updateHideChildren(!taskData.task.hide_children);
+        }}
+    >
+        {#if taskData.task.hide_children}
+                <img src={collapsedNodeSvg} alt="collapsed node" />
+        {:else}
+                <img src={uncollapsedNodeSvg} alt="uncollapsed node" />
+        {/if}
+    </Button>
 
     <task-title>
         <TextEntry
@@ -179,7 +175,9 @@ $effect(() => {
 </task-node>
 
 <Handle type="target" position={Position.Left} />
-<Handle type="source" position={Position.Right} />
+{#if !taskData.task.hide_children}
+    <Handle type="source" position={Position.Right} />
+{/if}
 
 
 <style lang="scss">
@@ -215,5 +213,9 @@ task-node {
 task-title {
     max-width: 12rem;
     font-size: 1.125rem;
+}
+
+img {
+    width: 1.125rem;
 }
 </style>
