@@ -12,9 +12,6 @@ import AncestryEdge from "./AncestryEdge.svelte";
 
 const { fitView } = useSvelteFlow();
 
-const nodes = $derived(store.getFlowNodes());
-const edges = $derived(store.getFlowEdges());
-
 let contextMenuOpen = $state(false);
 let contextMenuPosition = $state({ x: 0, y: 0 });
 
@@ -157,8 +154,8 @@ onMount(async () => {
 </script>
 
 <SvelteFlow
-    {nodes}
-    {edges}
+    nodes={store.getFlowNodes()}
+    edges={store.getFlowEdges()}
     fitView
     nodesDraggable={false}
     onconnectstart={onConnectStart}

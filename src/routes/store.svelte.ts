@@ -1,5 +1,6 @@
 import type { Task } from "$api/client";
 import Dagre from "@dagrejs/dagre";
+import { tick } from "svelte";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
 type Position = { x: number; y: number };
@@ -11,28 +12,33 @@ class PosData {
     #current: Position;
 
     constructor(last: Position, target: Position) {
-        this.#last = last;
-        this.#target = target;
-        this.#current = $derived(this.computeCurrent());
+        this.#last = $state(last);
+        this.#target = $state(target);
+        this.#current = $derived.by(() => {
+            if (nodeEase === 1) {
+                return this.#target;
+            }
+            
+            return {
+                x: this.#last.x + (this.#target.x - this.#last.x) * nodeEase,
+                y: this.#last.y + (this.#target.y - this.#last.y) * nodeEase,
+            };
+        });
     }
 
     get current() {
         return this.#current;
     }
 
-    private computeCurrent() {
-        return {
-            x: this.#last.x + (this.#target.x - this.#last.x) * nodePosAnimProgress,
-            y: this.#last.y + (this.#target.y - this.#last.y) * nodePosAnimProgress,
-        };
-    }
-
     setTarget(newTarget: Position) {
         if (this.#isFirst) {
-            [this.#last, this.#target] = [newTarget, newTarget];
+            this.#last = newTarget;
+            this.#target = newTarget;
+            
             this.#isFirst = false;
         } else {
-            [this.#last, this.#target] = [this.current, newTarget];
+            this.#last = this.#current;
+            this.#target = newTarget;
         }
     }
 }
@@ -43,6 +49,7 @@ export type TaskData = {
     task: Task,
     hrCompleted: number,
     hrRemaining: number,
+    hrEstimateOriginal: number,
     posData: PosData,
     elHeight: number,
 };
@@ -51,35 +58,42 @@ class TaskDataObj {
     #task: Task;
     #hrCompleted: number;
     #hrRemaining: number;
+    #hrEstimateOriginal: number;
     #posData: PosData;
     elHeight: number;
 
     constructor(task: Task) {
         this.#task = task;
 
-        const hours = $derived({
-            hrCompleted:
-                (task.hoursHistory.at(-1)?.hr_completed ?? 0)
+        this.#hrCompleted = $derived(
+            (task.hoursHistory.at(-1)?.hr_completed ?? 0)
                 + (
                     parentsToChildIds.get(task.id)?.values()
                         .map(childId => tasks.get(childId)?.hrCompleted ?? 0)
                         .reduce((a, b) => a + b, 0) 
                         ?? 0
-                ),
-            hrRemaining:
-                (task.hoursHistory.at(-1)?.hr_remaining ?? 0)
+                )
+        );
+        this.#hrRemaining = $derived(
+            (task.hoursHistory.at(-1)?.hr_remaining ?? 0)
                 + (
                     parentsToChildIds.get(task.id)?.values()
                         .map(childId => tasks.get(childId)?.hrRemaining ?? 0)
                         .reduce((a, b) => a + b, 0) 
                         ?? 0
-                ),
-        });
-
-        this.#hrCompleted = $derived(hours.hrCompleted);
-        this.#hrRemaining = $derived(hours.hrRemaining);
+                )
+        );
+        this.#hrEstimateOriginal = $derived(
+            (task.hoursHistory[0].hr_completed + task.hoursHistory[0].hr_remaining)
+                + (
+                    parentsToChildIds.get(task.id)?.values()
+                        .map(childId => tasks.get(childId)?.hrEstimateOriginal ?? 0)
+                        .reduce((a, b) => a + b, 0) 
+                        ?? 0
+                )
+        );
         
-        this.#posData = $state(new PosData({x: 0, y: 0}, {x: 0, y: 0}));
+        this.#posData = new PosData({x: 0, y: 0}, {x: 0, y: 0});
 
 
         this.elHeight = 0;
@@ -97,6 +111,10 @@ class TaskDataObj {
         return this.#hrRemaining;
     }
 
+    get hrEstimateOriginal() {
+        return this.#hrEstimateOriginal;
+    }
+
     get posData() {
         return this.#posData;
     }
@@ -106,6 +124,7 @@ const parentsToChildIds = $state(new SvelteMap<number, SvelteSet<number>>());
 
 let nodePosAnimStartTime = Date.now();
 let nodePosAnimProgress = $state(1);
+const nodeEase = $derived(1 - (1 - nodePosAnimProgress)**3);
 
 const derived = $derived({
     tasks,
@@ -171,8 +190,7 @@ export const setNewTaskParent = (task: Task, parentId: number | null) => {
 };
 
 const animate = () => {
-    nodePosAnimProgress = Math.min((Date.now() - nodePosAnimStartTime) / 150, 1);
-    updateNodePositions();
+    nodePosAnimProgress = Math.min((Date.now() - nodePosAnimStartTime) / 500, 1);
     if (nodePosAnimProgress >= 1) return;
     
     requestAnimationFrame(animate);
@@ -180,30 +198,36 @@ const animate = () => {
 
 export const animateNodePositions = () => {
     nodePosAnimStartTime = Date.now();
-    nodePosAnimProgress = 0;
     updateNodePositions();
 
+    nodePosAnimProgress = 0;
     requestAnimationFrame(animate);
 };
 
-const updateNodePositions = () => {
-    const graph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-    graph.setGraph({ rankdir: "LR" });
+const graph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+graph.setGraph({ rankdir: "LR" });
 
+const updateNodePositions = () => {
     const nodeWidth = 500;
 
     for (const [parentId, children] of parentsToChildIds) {
         for (const childId of children) {
-            if (!visibleTasks.has(parentId) || !visibleTasks.has(childId)) continue;
-
-            graph.setEdge(parentId.toString(), childId.toString());
+            if (!visibleTasks.has(parentId) || !visibleTasks.has(childId)) {
+                graph.removeEdge(parentId.toString(), childId.toString());
+            } else {
+                graph.setEdge(parentId.toString(), childId.toString());
+            }
         }
     }
-    for (const taskData of visibleTasks.values()) {
-        graph.setNode(taskData.task.id.toString(), {
-            width: nodeWidth,
-            height: taskData.elHeight,
-        });
+    for (const taskData of tasks.values()) {
+        if (!visibleTasks.has(taskData.task.id)) {
+            graph.removeNode(taskData.task.id.toString());
+        } else {
+            graph.setNode(taskData.task.id.toString(), {
+                width: nodeWidth,
+                height: taskData.elHeight,
+            });            
+        }
     }
 
     Dagre.layout(graph);

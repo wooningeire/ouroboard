@@ -106,13 +106,19 @@ $effect(() => {
 >
     {#if taskData.task.hide_children}
         <Button
-            onclick={() => updateHideChildren(false)}
+            onclick={event => {
+                event.stopPropagation();
+                updateHideChildren(false);
+            }}
         >
             &#x2192;
         </Button>
     {:else}
         <Button
-            onclick={() => updateHideChildren(true)}
+            onclick={event => {
+                event.stopPropagation();
+                updateHideChildren(true);
+            }}
         >
             &#x2193;
         </Button>
@@ -128,7 +134,7 @@ $effect(() => {
     </task-title>
 
     <DropdownMenu.Root>
-        <DropdownMenu.Trigger>
+        <DropdownMenu.Trigger onclick={event => event.stopPropagation()}>
             {#snippet child({ props })}
                 <Button {...props} variant="outline">
                     <Priority value={priority} />
@@ -165,6 +171,8 @@ $effect(() => {
 
         hrCompletedTotal={taskData.hrCompleted}
         hrRemainingTotal={taskData.hrRemaining}
+
+        hrEstimateOriginal={taskData.hrEstimateOriginal}
 
         {expanded}
     />

@@ -11,6 +11,8 @@ const {
     hrCompletedTotal,
     hrRemainingTotal,
 
+    hrEstimateOriginal,
+
     expanded = true,
 }: {
     hrCompleted: number,
@@ -20,6 +22,8 @@ const {
 
     hrCompletedTotal: number,
     hrRemainingTotal: number,
+
+    hrEstimateOriginal: number,
 
     expanded?: boolean,
 } = $props();
@@ -41,7 +45,7 @@ const fractionComplete = $derived(hrCompletedTotal / hrEstimateTotal);
             <span>{(isNaN(fractionComplete) ? 100 : fractionComplete * 100).toFixed(expanded ? 2 : 0)}%</span>
             {#if !expanded}
                 <span>&#x2022;</span>
-                <span>{hrCompletedTotal} / {hrRemainingTotal} / {hrEstimateTotal}</span>
+                <span>{hrCompletedTotal} / {hrRemainingTotal} / {hrEstimateTotal} ({hrEstimateOriginal})</span>
             {/if}
         </hours-summary-text>
     </hours-summary>

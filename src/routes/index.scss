@@ -88,6 +88,7 @@ textarea {
     flex-direction: column;
     border: var(--xy-node-border-default);
     color: var(--xy-node-color, var(--xy-node-color-default));
+    will-change: transform;
 }
 
 .svelte-flow__node.selectable:focus {

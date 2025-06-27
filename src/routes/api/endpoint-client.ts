@@ -2,7 +2,7 @@ import { PUBLIC_API_URL } from "$env/static/public";
 import type { GetEndpoint, OutputOf, PayloadOf, PostEndpoint } from "./endpoint-server";
 
 export const apiGetter = <T extends GetEndpoint>(urlString: string) => {
-    const url = new URL(urlString, PUBLIC_API_URL);
+    const url = new URL(urlString, new URL(PUBLIC_API_URL, location.origin));
 
     return async (
         payload: PayloadOf<T>,
@@ -21,7 +21,7 @@ export const apiGetter = <T extends GetEndpoint>(urlString: string) => {
 
 
 export const apiPoster = <T extends PostEndpoint<any>>(urlString: string, method: string="POST") => {
-    const url = new URL(urlString, PUBLIC_API_URL);
+    const url = new URL(urlString, new URL(PUBLIC_API_URL, location.origin));
 
     return async (
         payload: PayloadOf<T>,
