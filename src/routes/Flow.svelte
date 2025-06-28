@@ -78,19 +78,19 @@ const onConnectStart: OnConnectStart = (event, {nodeId, handleType}) => {
 
 const onConnectEnd: OnConnectEnd = (event) => {
     if (lastConnectionDropped && parentNodeId !== null) {
-        let screenX: number;
-        let screenY: number;
+        // let screenX: number;
+        // let screenY: number;
 
-        if (event instanceof MouseEvent) {
-            screenX = event.clientX;
-            screenY = event.clientY;
-        } else if (event instanceof TouchEvent && event.changedTouches.length > 0) {
-            screenX = event.changedTouches[0].clientX;
-            screenY = event.changedTouches[0].clientY;
-        } else {
-            screenX = 0;
-            screenY = 0;
-        }
+        // if (event instanceof MouseEvent) {
+        //     screenX = event.clientX;
+        //     screenY = event.clientY;
+        // } else if (event instanceof TouchEvent && event.changedTouches.length > 0) {
+        //     screenX = event.changedTouches[0].clientX;
+        //     screenY = event.changedTouches[0].clientY;
+        // } else {
+        //     screenX = 0;
+        //     screenY = 0;
+        // }
 
         createNewTask(Number(parentNodeId));
     }
@@ -104,6 +104,14 @@ const onConnect: OnConnect = async (connection: Connection) => {
 
     const parentId = Number(connection.source);
     const childId = Number(connection.target);
+
+
+    // Verify that no circular hierarchy occurs
+    let current: number | null = parentId;
+    while (current !== null) {
+        current = store.getTask(current)?.task.parent_id ?? null;
+        if (current === childId) return;
+    }
 
     const task = store.getTask(childId);
     if (task !== undefined) {

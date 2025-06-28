@@ -204,12 +204,11 @@ export const animateNodePositions = () => {
     requestAnimationFrame(animate);
 };
 
+const nodeWidth = 500;
 const graph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 graph.setGraph({ rankdir: "LR" });
 
 const updateNodePositions = () => {
-    const nodeWidth = 500;
-
     for (const [parentId, children] of parentsToChildIds) {
         for (const childId of children) {
             if (!visibleTasks.has(parentId) || !visibleTasks.has(childId)) {
