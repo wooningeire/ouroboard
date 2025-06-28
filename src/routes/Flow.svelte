@@ -5,7 +5,7 @@ import "./index.scss";
 import type { OnConnectStart, OnConnectEnd, OnConnect, OnDelete, Connection, Node, Edge } from "@xyflow/svelte";
 import TaskNode from "./TaskNode.svelte";
 import { api } from "$api/client";
-import * as store from "./store.svelte";
+import {useTasks} from "./store.svelte";
 import { onMount, tick } from "svelte";
 import * as DropdownMenu from "@/ui/dropdown-menu";
 import AncestryEdge from "./AncestryEdge.svelte";
@@ -15,8 +15,10 @@ const { fitView } = useSvelteFlow();
 let contextMenuOpen = $state(false);
 let contextMenuPosition = $state({ x: 0, y: 0 });
 
+const tasksOps = useTasks();
+
 const createNewTask = async (parentNodeId: number | null=null) => {
-    const placeholderTask = $state({
+    const placeholderTask = tasksOps.addTask({
         id: -1,
         created_at: new Date(),
         title: "",
@@ -37,16 +39,13 @@ const createNewTask = async (parentNodeId: number | null=null) => {
         }],
     });
 
-    store.addTask(placeholderTask);
-    store.animateNodePositions();
-
-    const task = await api.task.new({
+    const taskResponse = await api.task.new({
         parent_id: parentNodeId,
     });
 
-    store.delTask(placeholderTask);
-    Object.assign(placeholderTask, task);
-    store.addTask(placeholderTask);
+    placeholderTask.id = taskResponse.id;
+    tasksOps.delTask(placeholderTask);
+    tasksOps.addTask(taskResponse);
 };
 
 const createNewRootTask = async () => {
@@ -109,15 +108,14 @@ const onConnect: OnConnect = async (connection: Connection) => {
     // Verify that no circular hierarchy occurs
     let current: number | null = parentId;
     while (current !== null) {
-        current = store.getTask(current)?.task.parent_id ?? null;
+        current = tasksOps.getTask(current)?.parentId ?? null;
         if (current === childId) return;
     }
 
-    const task = store.getTask(childId);
+    const task = tasksOps.getTask(childId);
     if (task !== undefined) {
-        store.setNewTaskParent(task.task, parentId);
+        task.parentId = parentId;
     }
-    store.animateNodePositions();
 
     await api.task.edit({
         id: childId,
@@ -137,11 +135,10 @@ const onConnect: OnConnect = async (connection: Connection) => {
 
 const onDelete: OnDelete = async ({ nodes: deletedNodes }) => {
     for (const node of deletedNodes) {
-        const task = store.getTask(Number(node.id));
+        const task = tasksOps.getTask(Number(node.id));
         if (task === undefined) continue;
-        store.delTask(task.task);
+        tasksOps.delTask(task);
     }
-    store.animateNodePositions();
 
     await api.task.trash({
         ids: deletedNodes.map(node => Number(node.id)),
@@ -152,18 +149,20 @@ const onDelete: OnDelete = async ({ nodes: deletedNodes }) => {
 onMount(async () => {
     const {tasks} = await api.task.list({});
 
-    store.initializeTasks(tasks);
-    store.animateNodePositions();
+    for (const task of tasks) {
+        tasksOps.addTask(task);
+    }
 
     await tick();
 
     fitView();
 });
+
 </script>
 
 <SvelteFlow
-    nodes={store.getFlowNodes()}
-    edges={store.getFlowEdges()}
+    nodes={tasksOps.flowNodes}
+    edges={tasksOps.flowEdges}
     fitView
     nodesDraggable={false}
     onconnectstart={onConnectStart}

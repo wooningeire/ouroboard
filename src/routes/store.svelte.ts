@@ -1,71 +1,150 @@
 import type { Task } from "$api/client";
-import Dagre from "@dagrejs/dagre";
+import Dagre, { layout } from "@dagrejs/dagre";
 import { tick } from "svelte";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
 type Position = { x: number; y: number };
 
-class PosData {
-    #isFirst: boolean = true;
-    #last: Position;
-    #target: Position;
-    #current: Position;
 
-    constructor(last: Position, target: Position) {
-        this.#last = $state(last);
-        this.#target = $state(target);
-        this.#current = $derived.by(() => {
-            if (nodeEase === 1) {
-                return this.#target;
-            }
-            
-            return {
-                x: this.#last.x + (this.#target.x - this.#last.x) * nodeEase,
-                y: this.#last.y + (this.#target.y - this.#last.y) * nodeEase,
-            };
-        });
-    }
-
-    get current() {
-        return this.#current;
-    }
-
-    setTarget(newTarget: Position) {
-        if (this.#isFirst) {
-            this.#last = newTarget;
-            this.#target = newTarget;
-            
-            this.#isFirst = false;
-        } else {
-            this.#last = this.#current;
-            this.#target = newTarget;
+export const usePos = (newTarget: Position, nodeEase: () => number) => {
+    let last = $state(newTarget);
+    let target = $state(newTarget);
+    const current = $derived.by(() => {
+        if (nodeEase() === 1) {
+            return target;
         }
-    }
-}
+        
+        return {
+            x: last.x + (target.x - last.x) * nodeEase(),
+            y: last.y + (target.y - last.y) * nodeEase(),
+        };
+    });
 
-const tasks = $state(new SvelteMap<number, TaskData>());
+    let isFirst = true;
 
-export type TaskData = {
-    task: Task,
+    return {
+        get last() {
+            return last;
+        },
+        get target() {
+            return target;
+        },
+        get current() {
+            return current;
+        },
+        setTarget: (newTarget: Position) => {
+            if (isFirst) {
+                last = newTarget;
+                target = newTarget;
+
+                isFirst = false;
+            } else {
+                last = current;
+                target = newTarget;
+            }
+        },
+    };
+};
+
+
+
+export type ReactiveTask = {
+    id: number,
+
+    title: string,
+    priority: number | null,
+    parentId: number | null,
+    hideChildren: boolean,
+    alwaysExpanded: boolean,
+    clear: boolean,
+    trashed: boolean,
+    hoursHistory: {
+        created_at: Date,
+        hr_completed: number,
+        hr_remaining: number,
+    }[],
+
     hrCompleted: number,
     hrRemaining: number,
     hrEstimateOriginal: number,
-    posData: PosData,
+    pos: ReturnType<typeof usePos>,
+
     elHeight: number,
 };
 
-class TaskDataObj {
-    #task: Task;
-    #hrCompleted: number;
-    #hrRemaining: number;
-    #hrEstimateOriginal: number;
-    #posData: PosData;
-    elHeight: number;
 
-    constructor(task: Task) {
-        this.#task = task;
+export const useTasks = () => {
+    const tasks = $state(new SvelteMap<number, ReactiveTask>());
+    const parentsToChildIds = $state(new SvelteMap<number, SvelteSet<number>>());
 
-        this.#hrCompleted = $derived(
+
+    const nodeWidth = 500;
+    const layoutGraph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+    layoutGraph.setGraph({ rankdir: "LR" });
+
+    
+    const visibleTasks = $derived.by(() => {
+        const hasInvisibleAncestorResults = new Map<number, boolean>();
+
+        const hasInvisibleAncestor = (task: ReactiveTask): boolean => {
+            const savedResult = hasInvisibleAncestorResults.get(task.id);
+            if (savedResult !== undefined) {
+                return savedResult;
+            }
+
+
+            let result: boolean;
+
+            if (task.parentId === null) {
+                result = false;
+            } else if (task.clear || task.trashed) {
+                result = true;
+            } else {
+                const parent = tasks.get(task.parentId);
+
+                if (parent === undefined) {
+                    result = true;
+                } else if (parent.hideChildren) {
+                    result = true;
+                } else {
+                    result = hasInvisibleAncestor(parent);
+                }
+            }
+            
+            hasInvisibleAncestorResults.set(task.id, result);
+            return result;
+        };
+
+
+        return new Map(
+            tasks.values()
+                .filter(task => !hasInvisibleAncestor(task))
+                .map(task => [task.id, task])
+        );
+    });
+
+    $effect(() => {
+        void visibleTasks;
+
+        updateNodePositions();
+    });
+
+
+    const {nodeEase, startPosAnimation} = useTaskAnimation();
+
+
+    const createReactiveTask = (task: Task) => {
+        let id = $state(task.id);
+        let title = $state(task.title);
+        let priority = $state(task.priority);
+        let parentId = $state(task.parent_id);
+        let hideChildren = $state(task.hide_children);
+        let alwaysExpanded = $state(task.always_expanded);
+        let clear = $state(task.clear);
+        let trashed = $state(task.trashed);
+        let hoursHistory = $state(task.hoursHistory);
+
+        const hrCompleted = $derived(
             (task.hoursHistory.at(-1)?.hr_completed ?? 0)
                 + (
                     parentsToChildIds.get(task.id)?.values()
@@ -74,7 +153,7 @@ class TaskDataObj {
                         ?? 0
                 )
         );
-        this.#hrRemaining = $derived(
+        const hrRemaining = $derived(
             (task.hoursHistory.at(-1)?.hr_remaining ?? 0)
                 + (
                     parentsToChildIds.get(task.id)?.values()
@@ -83,7 +162,7 @@ class TaskDataObj {
                         ?? 0
                 )
         );
-        this.#hrEstimateOriginal = $derived(
+        const hrEstimateOriginal = $derived(
             (task.hoursHistory[0].hr_completed + task.hoursHistory[0].hr_remaining)
                 + (
                     parentsToChildIds.get(task.id)?.values()
@@ -93,222 +172,249 @@ class TaskDataObj {
                 )
         );
         
-        this.#posData = new PosData({x: 0, y: 0}, {x: 0, y: 0});
+        const pos = usePos({ x: 0, y: 0 }, nodeEase);
+
+        let elHeight = $state(0);
 
 
-        this.elHeight = 0;
-    }
+        return {
+            get id() {
+                return id;
+            },
+            set id(newId: number) {
+                layoutGraph.removeNode(id.toString());
 
-    get task() {
-        return this.#task;
-    }
+                id = newId;
 
-    get hrCompleted() {
-        return this.#hrCompleted;
-    }
+                layoutGraph.setNode(id.toString(), {
+                    width: nodeWidth,
+                    height: elHeight,
+                });
+            },
 
-    get hrRemaining() {
-        return this.#hrRemaining;
-    }
+            get title() {
+                return title;
+            },
+            set title(newTitle: string) {
+                title = newTitle;
+            },
 
-    get hrEstimateOriginal() {
-        return this.#hrEstimateOriginal;
-    }
+            get priority() {
+                return priority;
+            },
+            set priority(newPriority: number | null) {
+                priority = newPriority;
+            },
 
-    get posData() {
-        return this.#posData;
-    }
-}
+            get parentId() {
+                return parentId;
+            },
+            set parentId(newParentId: number | null) {
+                if (parentId === newParentId) return;
 
-const parentsToChildIds = $state(new SvelteMap<number, SvelteSet<number>>());
+                unlinkFromParent(id, parentId);
 
-let nodePosAnimStartTime = Date.now();
-let nodePosAnimProgress = $state(1);
-const nodeEase = $derived(1 - (1 - nodePosAnimProgress)**3);
+                parentId = newParentId;
 
-const derived = $derived({
-    tasks,
-    parentsToChildIds,
-});
-export const get = () => derived;
+                linkToParent(id, parentId);
 
+                updateNodePositions();
+            },
+            get hideChildren() {
+                return hideChildren;
+            },
+            set hideChildren(newHideChildren: boolean) {
+                hideChildren = newHideChildren;
+            },
+            alwaysExpanded,
+            clear,
 
-export const addTask = (task: Task) => {
-    const taskData = $state(new TaskDataObj(task));
-    tasks.set(task.id, taskData);
+            get trashed() {
+                return trashed;
+            },
+            set trashed(newTrashed: boolean) {
+                trashed = newTrashed;
+            },
 
-    if (task.parent_id === null) return;
+            hoursHistory,
 
-    const childIds = parentsToChildIds.get(task.parent_id);
-    if (childIds !== undefined) {
-        childIds.add(task.id);
-    } else {
-        parentsToChildIds.set(task.parent_id, new SvelteSet([task.id]));
-    }
-};
+            hrCompleted,
+            hrRemaining,
+            hrEstimateOriginal,
+            pos,
 
-export const getTask = (id: number) => {
-    return tasks.get(id);
-};
+            get elHeight() {
+                return elHeight;
+            },
+            set elHeight(newElHeight: number) {
+                if (elHeight === newElHeight) return;
 
-export const delTask = (task: Task) => {
-    tasks.delete(task.id);
-    parentsToChildIds.delete(task.id);
+                elHeight = newElHeight;
+                
+                layoutGraph.setNode(id.toString(), {
+                    width: nodeWidth,
+                    height: elHeight,
+                });
 
-    if (task.parent_id === null) return;
-
-    const childIds = parentsToChildIds.get(task.parent_id);
-    if (childIds !== undefined) {
-        childIds.delete(task.id);
-    }
-};
-
-export const initializeTasks = (tasks: Task[]) => {
-    return Promise.all(tasks.map(task => {
-        const taskProxy = $state(task);
-        return addTask(taskProxy);
-    }));
-};
-
-export const setNewTaskParent = (task: Task, parentId: number | null) => {
-    if (task.parent_id === parentId) return;
-
-    if (task.parent_id !== null) {
-        parentsToChildIds.get(task.parent_id)?.delete(task.id);
-    }
-
-    task.parent_id = parentId;
-
-    if (parentId === null) return;
-
-    const childIds = parentsToChildIds.get(parentId);
-    if (childIds !== undefined) {
-        childIds.add(task.id);
-    } else {
-        parentsToChildIds.set(parentId, new SvelteSet([task.id]));
-    }
-};
-
-const animate = () => {
-    nodePosAnimProgress = Math.min((Date.now() - nodePosAnimStartTime) / 500, 1);
-    if (nodePosAnimProgress >= 1) return;
-    
-    requestAnimationFrame(animate);
-};
-
-export const animateNodePositions = () => {
-    nodePosAnimStartTime = Date.now();
-    updateNodePositions();
-
-    nodePosAnimProgress = 0;
-    requestAnimationFrame(animate);
-};
-
-const nodeWidth = 500;
-const graph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-graph.setGraph({ rankdir: "LR" });
-
-const updateNodePositions = () => {
-    for (const [parentId, children] of parentsToChildIds) {
-        for (const childId of children) {
-            if (!visibleTasks.has(parentId) || !visibleTasks.has(childId)) {
-                graph.removeEdge(parentId.toString(), childId.toString());
-            } else {
-                graph.setEdge(parentId.toString(), childId.toString());
-            }
-        }
-    }
-    for (const taskData of tasks.values()) {
-        if (!visibleTasks.has(taskData.task.id)) {
-            graph.removeNode(taskData.task.id.toString());
-        } else {
-            graph.setNode(taskData.task.id.toString(), {
-                width: nodeWidth,
-                height: taskData.elHeight,
-            });            
-        }
-    }
-
-    Dagre.layout(graph);
-
-
-    for (const taskData of visibleTasks.values()) {
-        const {x, y} = graph.node(taskData.task.id.toString());
-
-        taskData.posData.setTarget({
-            x: x - nodeWidth / 2,
-            y: y - taskData.elHeight / 2,
-        });
-    }
-};
-
-const visibleTasks = $derived.by(() => {
-    const hasInvisibleAncestorResults = new Map<number, boolean>();
-
-    const hasInvisibleAncestor = (taskData: TaskData): boolean => {
-        const savedResult = hasInvisibleAncestorResults.get(taskData.task.id);
-        if (savedResult !== undefined) {
-            return savedResult;
-        }
-
-
-        let result: boolean;
-
-        if (taskData.task.parent_id === null) {
-            result = false;
-        } else if (taskData.task.clear || taskData.task.trashed) {
-            result = true;
-        } else {
-            const parent = tasks.get(taskData.task.parent_id);
-
-            if (parent === undefined) {
-                result = true;
-            } else if (parent.task.hide_children) {
-                result = true;
-            } else {
-                result = hasInvisibleAncestor(parent);
-            }
-        }
-        
-        hasInvisibleAncestorResults.set(taskData.task.id, result);
-        return result;
+                updateNodePositions();
+            },
+        };
     };
 
 
-    return new Map(
-        tasks.values()
-            .filter(taskData => !hasInvisibleAncestor(taskData))
-            .map(taskData => [taskData.task.id, taskData])
-    );
-});
+    let relayoutQueued = false;
+    const updateNodePositions = () => {
+        if (relayoutQueued) return;
 
-const flowNodes = $derived.by(() => {
-    return visibleTasks.values()
-        .map(taskData => {
-            return {
-                id: taskData.task.id.toString(),
-                type: "task",
-                position: taskData.posData.current,
-                data: taskData,
-            };
-        })
-        .toArray();
-});
+        relayoutQueued = true;
 
-const flowEdges = $derived.by(() => {
-    return parentsToChildIds.entries()
-        .flatMap(([parentId, childIds]) =>
-            childIds.values()
-                .map(childId => ({
-                    id: `e${parentId}-${childId}`,
-                    type: "ancestry",
-                    source: parentId.toString(),
-                    target: childId.toString(),
-                })
+        tick().then(() => {
+            for (const [parentId, childIds] of parentsToChildIds) {
+                for (const childId of childIds.values()) {
+                    if (!visibleTasks.has(childId) || !visibleTasks.has(parentId)) {
+                        layoutGraph.removeEdge(parentId.toString(), childId.toString());
+                    } else {
+                        layoutGraph.setEdge(parentId.toString(), childId.toString());
+                    }
+                }
+            }
+
+            for (const task of tasks.values()) {
+                if (!visibleTasks.has(task.id)) {
+                    layoutGraph.removeNode(task.id.toString());
+                } else {
+                    layoutGraph.setNode(task.id.toString(), {
+                        width: nodeWidth,
+                        height: task.elHeight,
+                    });
+                }
+            }
+
+
+            Dagre.layout(layoutGraph);
+
+            for (const task of visibleTasks.values()) {
+                const {x, y} = layoutGraph.node(task.id.toString());
+
+                task.pos.setTarget({
+                    x: x - nodeWidth / 2,
+                    y: y - task.elHeight / 2,
+                });
+            }
+
+            startPosAnimation();
+
+            relayoutQueued = false;
+        });
+    };
+
+
+    const unlinkFromParent = (childId: number, parentId: number | null) => {
+        if (parentId === null) return;
+
+        const childIds = parentsToChildIds.get(parentId);
+        if (childIds !== undefined) {
+            childIds.delete(childId);
+        }
+
+        layoutGraph.removeEdge(parentId.toString(), childId.toString());
+    };
+
+    const linkToParent = (childId: number, parentId: number | null) => {
+        if (parentId === null) return;
+
+        const childIds = parentsToChildIds.get(parentId);
+        if (childIds !== undefined) {
+            childIds.add(childId);
+        } else {
+            parentsToChildIds.set(parentId, new SvelteSet([childId]));
+        }
+
+        layoutGraph.setEdge(parentId.toString(), childId.toString());
+    };
+
+    const flowNodes = $derived.by(() => {
+        return visibleTasks.values()
+            .map(task => {
+                return {
+                    id: task.id.toString(),
+                    type: "task",
+                    position: task.pos.current,
+                    data: task,
+                };
+            })
+            .toArray();
+    });
+
+    const flowEdges = $derived.by(() => {
+        return parentsToChildIds.entries()
+            .flatMap(([parentId, childIds]) =>
+                childIds.values()
+                    .map(childId => ({
+                        id: `e${parentId}-${childId}`,
+                        type: "ancestry",
+                        source: parentId.toString(),
+                        target: childId.toString(),
+                    })
+                )
             )
-        )
-        .toArray();
-});
+            .toArray();
+    });
 
-export const getFlowNodes = () => flowNodes;
-export const getFlowEdges = () => flowEdges;
+
+    return {
+        addTask: (baseTask: Task) => {
+            const task = createReactiveTask(baseTask);
+            tasks.set(task.id, task);
+            linkToParent(task.id, task.parentId);
+
+            return task;
+        },
+
+        getTask: (id: number) => tasks.get(id),
+
+        delTask: (task: ReactiveTask) => {
+            unlinkFromParent(task.id, task.parentId);
+            tasks.delete(task.id);
+            parentsToChildIds.delete(task.id);
+            layoutGraph.removeNode(task.id.toString());
+
+            updateNodePositions();
+        },
+
+        get flowNodes() {
+            return flowNodes;
+        },
+        get flowEdges() {
+            return flowEdges;
+        },
+    };
+};
+
+
+const useTaskAnimation = () => {
+    let nodePosAnimStartTime = Date.now();
+    let nodePosAnimProgress = $state(1);
+    const nodeEase = $derived(1 - (1 - nodePosAnimProgress)**3);
+    let handle = 0;
+
+    const animate = () => {
+        nodePosAnimProgress = Math.min((Date.now() - nodePosAnimStartTime) / 500, 1);
+        if (nodePosAnimProgress >= 1) return;
+        
+        handle = requestAnimationFrame(animate);
+    };
+
+    const startPosAnimation = () => {
+        cancelAnimationFrame(handle);
+        nodePosAnimStartTime = Date.now();
+
+        nodePosAnimProgress = 0;
+        handle = requestAnimationFrame(animate);
+    };
+
+    return {
+        nodeEase: () => nodeEase,
+        startPosAnimation,
+    };
+};

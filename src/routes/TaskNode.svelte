@@ -6,8 +6,7 @@ import * as DropdownMenu from "@/ui/dropdown-menu";
 import { Button } from "@/ui/button";
 import Priority, { labels } from "./Priority.svelte";
 import Hours from "./Hours.svelte";
-import type { TaskData } from "./store.svelte";
-import * as store from "./store.svelte";
+import {type ReactiveTask} from "./store.svelte";
 import { tick } from "svelte";
 
 import collapsedNodeSvg from "$lib/assets/collapsed-node.svg";
@@ -16,10 +15,10 @@ import uncollapsedNodeSvg from "$lib/assets/uncollapsed-node.svg";
 const {
     id,
     selected,
-    data: taskData,
-}: NodeProps<Node<TaskData>> = $props();
+    data: task,
+}: NodeProps<Node<ReactiveTask>> = $props();
 
-const expanded = $derived(taskData.task.always_expanded || selected);
+const expanded = $derived(task.alwaysExpanded || selected);
 
 
 
@@ -30,12 +29,12 @@ const saveTitle = async (title: string) => {
     });
 };
 
-const priority = $derived(taskData.task.priority);
+const priority = $derived(task.priority);
 const priorityString = $derived(priority?.toString() ?? "");
 
 const updatePriority = async (newPriorityString: string) => {
     const newPriority = newPriorityString === "" ? null : Number(newPriorityString);
-    taskData.task.priority = newPriority;
+    task.priority = newPriority;
 
     await api.task.edit({
         id: Number(id),
@@ -43,12 +42,12 @@ const updatePriority = async (newPriorityString: string) => {
     });
 };
 
-const hrCompleted = $derived(taskData.task.hoursHistory.at(-1)?.hr_completed ?? 0);
-const hrRemaining = $derived(taskData.task.hoursHistory.at(-1)?.hr_remaining ?? 0);
-const done = $derived(taskData.hrCompleted > 0 && taskData.hrRemaining === 0);
+const hrCompleted = $derived(task.hoursHistory.at(-1)?.hr_completed ?? 0);
+const hrRemaining = $derived(task.hoursHistory.at(-1)?.hr_remaining ?? 0);
+const done = $derived(task.hrCompleted > 0 && task.hrRemaining === 0);
 
 const updateHoursHistory = async () => {
-    taskData.task.hoursHistory = await api.task.updateHours({
+    task.hoursHistory = await api.task.updateHours({
         id: Number(id),
         hr_completed: hrCompleted,
         hr_remaining: hrRemaining,
@@ -56,7 +55,7 @@ const updateHoursHistory = async () => {
 };
 
 const updateHrCompleted = async (newHrCompleted: number) => {
-    taskData.task.hoursHistory.push({
+    task.hoursHistory.push({
         created_at: new Date(),
         hr_completed: newHrCompleted,
         hr_remaining: hrRemaining,
@@ -66,7 +65,7 @@ const updateHrCompleted = async (newHrCompleted: number) => {
 };
 
 const updateHrRemaining = async (newHrRemaining: number) => {
-    taskData.task.hoursHistory.push({
+    task.hoursHistory.push({
         created_at: new Date(),
         hr_completed: hrCompleted,
         hr_remaining: newHrRemaining,
@@ -77,8 +76,7 @@ const updateHrRemaining = async (newHrRemaining: number) => {
 
 
 const updateHideChildren = async (newHideChildren: boolean) => {
-    taskData.task.hide_children = newHideChildren;
-    store.animateNodePositions();
+    task.hideChildren = newHideChildren;
 
     await api.task.edit({
         id: Number(id),
@@ -89,16 +87,12 @@ const updateHideChildren = async (newHideChildren: boolean) => {
 
 let taskEl = $state<HTMLUnknownElement>();
 const elHeight = $derived.by(() => {
-    void taskData.task.title;
+    void task.title;
     return taskEl?.offsetHeight ?? 0;
 });
 
 $effect(() => {
-    taskData.elHeight = elHeight - 45;
-
-    tick().then(() => {
-        store.animateNodePositions();
-    });
+    task.elHeight = elHeight - 45;
 });
 </script>
 
@@ -110,10 +104,10 @@ $effect(() => {
     <Button
         onclick={event => {
             event.stopPropagation();
-            updateHideChildren(!taskData.task.hide_children);
+            updateHideChildren(!task.hideChildren);
         }}
     >
-        {#if taskData.task.hide_children}
+        {#if task.hideChildren}
                 <img src={collapsedNodeSvg} alt="collapsed node" />
         {:else}
                 <img src={uncollapsedNodeSvg} alt="uncollapsed node" />
@@ -122,7 +116,7 @@ $effect(() => {
 
     <task-title>
         <TextEntry
-            value={taskData.task.title}
+            value={task.title}
             onValueChange={title => saveTitle(title)}
             placeholder="Task title"
             disabled={!expanded}
@@ -165,17 +159,17 @@ $effect(() => {
         onHrCompletedChange={updateHrCompleted}
         onHrRemainingChange={updateHrRemaining}
 
-        hrCompletedTotal={taskData.hrCompleted}
-        hrRemainingTotal={taskData.hrRemaining}
+        hrCompletedTotal={task.hrCompleted}
+        hrRemainingTotal={task.hrRemaining}
 
-        hrEstimateOriginal={taskData.hrEstimateOriginal}
+        hrEstimateOriginal={task.hrEstimateOriginal}
 
         {expanded}
     />
 </task-node>
 
 <Handle type="target" position={Position.Left} />
-{#if !taskData.task.hide_children}
+{#if !task.hideChildren}
     <Handle type="source" position={Position.Right} />
 {/if}
 
