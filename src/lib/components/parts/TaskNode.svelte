@@ -1,13 +1,12 @@
 <script lang="ts">
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/svelte";
-import { api, type Task } from "$api/client";
+import { api } from "$api/client";
 import TextEntry from "./TextEntry.svelte";
 import * as DropdownMenu from "@/ui/dropdown-menu";
 import { Button } from "@/ui/button";
 import Priority, { labels } from "./Priority.svelte";
 import Hours from "./Hours.svelte";
-import {type ReactiveTask} from "./store.svelte";
-import { tick, untrack } from "svelte";
+import {type ReactiveTask} from "$lib/composables/useTasks.svelte";
 
 import collapsedNodeSvg from "$lib/assets/collapsed-node.svg";
 import uncollapsedNodeSvg from "$lib/assets/uncollapsed-node.svg";
@@ -89,7 +88,6 @@ $effect(() => {
     if (selected) return;
 
     task.elHeight = elHeight;
-    task.pos.doNotAnimateNextChange();
 });
 
 </script>

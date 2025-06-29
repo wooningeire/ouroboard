@@ -1,5 +1,5 @@
 import type { Task } from "$api/client";
-import Dagre, { layout } from "@dagrejs/dagre";
+import Dagre from "@dagrejs/dagre";
 import { tick } from "svelte";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
@@ -51,7 +51,6 @@ export const usePos = (newTarget: Position, nodeEase: () => number) => {
 };
 
 
-
 export type ReactiveTask = {
     id: number,
 
@@ -77,6 +76,7 @@ export type ReactiveTask = {
     elHeight: number,
 };
 
+export const tasksContextKey = Symbol();
 
 export const useTasks = () => {
     const tasks = $state(new SvelteMap<number, ReactiveTask>());
@@ -105,6 +105,7 @@ export const useTasks = () => {
 
 
     const {nodeEase, startPosAnimation} = useTaskAnimation();
+    $inspect(nodeEase())
 
 
     const createReactiveTask = (baseTask: Task) => {
@@ -377,7 +378,6 @@ export const useTasks = () => {
             })
             .toArray();
     });
-
 
     return {
         addTask: (baseTask: Task) => {

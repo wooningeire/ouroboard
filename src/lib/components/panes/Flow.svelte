@@ -1,14 +1,13 @@
 <script lang="ts">
 import { Background, MiniMap, SvelteFlow, useSvelteFlow } from "@xyflow/svelte";
 import "@xyflow/svelte/dist/style.css";
-import "./index.scss";
 import type { OnConnectStart, OnConnectEnd, OnConnect, OnDelete, Connection, Node, Edge } from "@xyflow/svelte";
-import TaskNode from "./TaskNode.svelte";
+import TaskNode from "@/parts/TaskNode.svelte";
 import { api } from "$api/client";
-import {useTasks} from "./store.svelte";
-import { onMount, tick } from "svelte";
+import {useTasks, tasksContextKey} from "$lib/composables/useTasks.svelte";
+import { getContext, onMount, tick } from "svelte";
 import * as DropdownMenu from "@/ui/dropdown-menu";
-import AncestryEdge from "./AncestryEdge.svelte";
+import AncestryEdge from "@/parts/AncestryEdge.svelte";
     import { SvelteMap } from "svelte/reactivity";
 
 const { fitView } = useSvelteFlow();
@@ -17,7 +16,9 @@ let contextMenuOpen = $state(false);
 let contextMenuPosition = $state({ x: 0, y: 0 });
 
 
-const tasksOps = useTasks();
+const tasksOps = getContext<ReturnType<typeof useTasks>>(tasksContextKey);
+
+
 
 const createNewTask = async (parentNodeId: number | null=null) => {
     const placeholderTask = tasksOps.addTask({

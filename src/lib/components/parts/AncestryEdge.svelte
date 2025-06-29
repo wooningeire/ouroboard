@@ -8,7 +8,8 @@ import {
 } from "@xyflow/svelte";
 import Button from '@/ui/button/button.svelte';
 import { api } from "$api/client";
-import * as store from "./store.svelte";
+import {useTasks, tasksContextKey} from "$lib/composables/useTasks.svelte";
+    import { getContext } from "svelte";
  
 const { id, sourceX, sourceY, targetX, targetY, target, selected }: EdgeProps = $props();
  
@@ -23,12 +24,14 @@ const [edgePath, labelX, labelY] = $derived(
     }),
 );
 
+const tasksOps = getContext<ReturnType<typeof useTasks>>(tasksContextKey);
+
 const clearParentId = async () => {
     const childId = Number(target);
 
-    const task = store.getTask(childId);
+    const task = tasksOps.getTask(childId);
     if (task !== undefined) {
-        store.setNewTaskParent(task.task, null);
+        task.parentId = null;
     }
 
     await api.task.edit({
