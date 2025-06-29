@@ -11,7 +11,7 @@ import {type ReactiveTask} from "$lib/composables/useTasks.svelte";
 
 import collapsedNodeSvg from "$lib/assets/collapsed-node.svg";
 import uncollapsedNodeSvg from "$lib/assets/uncollapsed-node.svg";
-    import { tick } from "svelte";
+    import { onMount, tick, untrack } from "svelte";
 
 const {
     id,
@@ -86,22 +86,33 @@ const updateHideChildren = async (newHideChildren: boolean) => {
 };
 
 let elHeight = $state(task.elHeight);
+let mounted = false;
 $effect(() => {
+    if (!mounted) return;
     if (selected) return;
-
-    void elHeight;
-
     setTimeout(() => {
         task.elHeight = elHeight;
     });
 });
 
+$effect(() => {
+    if (!mounted) return;
+    if (untrack(() => selected)) return;
+
+    task.elHeight = elHeight;
+});
+
+onMount(() => {
+    mounted = true;
+
+    task.elHeight = elHeight;
+})
 </script>
 
 <task-node
     class:expanded
     class:done
-    bind:clientHeight={elHeight}
+    bind:offsetHeight={elHeight}
 >
     <Tooltip.Provider
         delayDuration={0}
