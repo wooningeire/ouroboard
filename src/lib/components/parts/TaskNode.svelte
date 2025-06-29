@@ -11,6 +11,7 @@ import {type ReactiveTask} from "$lib/composables/useTasks.svelte";
 
 import collapsedNodeSvg from "$lib/assets/collapsed-node.svg";
 import uncollapsedNodeSvg from "$lib/assets/uncollapsed-node.svg";
+    import { tick } from "svelte";
 
 const {
     id,
@@ -84,11 +85,15 @@ const updateHideChildren = async (newHideChildren: boolean) => {
     });
 };
 
-let elHeight = $state(0);
+let elHeight = $state(task.elHeight);
 $effect(() => {
     if (selected) return;
 
-    task.elHeight = elHeight;
+    void elHeight;
+
+    setTimeout(() => {
+        task.elHeight = elHeight;
+    });
 });
 
 </script>

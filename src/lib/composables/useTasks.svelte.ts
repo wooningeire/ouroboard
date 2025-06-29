@@ -1,6 +1,7 @@
 import type { Task } from "$api/client";
 import Dagre from "@dagrejs/dagre";
-import { tick } from "svelte";
+import { type Edge, type Node } from "@xyflow/svelte";
+import { tick, untrack } from "svelte";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
 type Position = { x: number; y: number };
@@ -74,6 +75,9 @@ export type ReactiveTask = {
     pos: ReturnType<typeof usePos>,
 
     elHeight: number,
+
+    flowNode: Node<ReactiveTask>,
+    flowEdge: Edge | null,
 };
 
 export const tasksContextKey = Symbol();
@@ -82,15 +86,7 @@ export const useTasks = () => {
     const tasks = $state(new SvelteMap<number, ReactiveTask>());
     const parentsToChildIds = $state(new SvelteMap<number, SvelteSet<number>>());
 
-
-    // const visibleTasks = new Set<ReactiveTask>();
-
-
-    const visibleTasks = $derived(
-        tasks.values()
-            .filter(task => task.visible)
-            .toArray()
-    );
+    const visibleTasks = $state(new SvelteSet<ReactiveTask>());
 
     $effect(() => {
         void visibleTasks;
@@ -152,12 +148,12 @@ export const useTasks = () => {
 
 
         const visible = $derived.by(() => {
-            if (parentId === null) {
-                return true;
-            }
-
             if (clear || trashed) {
                 return false;
+            }
+
+            if (parentId === null) {
+                return true;
             }
 
             const parent = tasks.get(parentId);
@@ -174,7 +170,7 @@ export const useTasks = () => {
         });
 
 
-        return {
+        const reactiveTask = {
             get id() {
                 return id;
             },
@@ -182,11 +178,6 @@ export const useTasks = () => {
                 layoutGraph.removeNode(id.toString());
 
                 id = newId;
-
-                layoutGraph.setNode(id.toString(), {
-                    width: nodeWidth,
-                    height: elHeight,
-                });
             },
 
             get title() {
@@ -257,15 +248,72 @@ export const useTasks = () => {
                 if (elHeight === newElHeight) return;
 
                 elHeight = newElHeight;
-                
-                layoutGraph.setNode(id.toString(), {
-                    width: nodeWidth,
-                    height: elHeight,
-                });
+            },
 
-                updateNodePositions();
+            get flowNode() {
+                return flowNode;
+            },
+            get flowEdge() {
+                return flowEdge;
             },
         };
+
+
+        const flowNode = $derived({
+            id: id.toString(),
+            type: "task",
+            position: pos.current,
+            data: reactiveTask,
+        });
+
+        const flowEdge = $derived.by(() => {
+            if (parentId === null) return null;
+            
+            return {
+                id: `e${parentId}-${id}`,
+                type: "ancestry",
+                source: parentId.toString(),
+                target: id.toString(),
+            };
+        });
+
+
+        $effect.root(() => {
+            $effect(() => {
+                if (visible) {
+                    layoutGraph.setNode(id.toString(), {
+                        width: nodeWidth,
+                        height: elHeight,
+                    });
+
+                    if (parentId !== null) {
+                        layoutGraph.setEdge(parentId.toString(), id.toString());
+                    }
+
+                    untrack(() => {
+                        visibleTasks.add(reactiveTask);
+                    });
+                } else {
+                    layoutGraph.removeNode(id.toString());
+
+                    if (parentId !== null) {
+                        layoutGraph.removeEdge(parentId.toString(), id.toString());
+                    }
+
+                    untrack(() => {
+                        visibleTasks.delete(reactiveTask);
+                        pos.doNotAnimateNextChange();
+                    });
+                }
+
+                updateNodePositions();
+            });
+
+            return () => {};
+        });
+
+
+        return reactiveTask;
     };
 
 
@@ -276,34 +324,6 @@ export const useTasks = () => {
         relayoutQueued = true;
 
         tick().then(() => {
-            for (const [parentId, childIds] of parentsToChildIds) {
-                for (const childId of childIds.values()) {
-                    if (!tasks.get(childId)!.visible || !tasks.get(parentId)!.visible) {
-                        layoutGraph.removeEdge(parentId.toString(), childId.toString());
-                    } else {
-                        layoutGraph.setEdge(parentId.toString(), childId.toString());
-                    }
-                }
-            }
-
-            const visibleTasks: ReactiveTask[] = [];
-
-            for (const task of tasks.values()) {
-                if (!task.visible) {
-                    layoutGraph.removeNode(task.id.toString());
-
-                    task.pos.doNotAnimateNextChange();
-                } else {
-                    layoutGraph.setNode(task.id.toString(), {
-                        width: nodeWidth,
-                        height: task.elHeight,
-                    });
-
-                    visibleTasks.push(task);
-                }
-            }
-
-
             Dagre.layout(layoutGraph);
 
             for (const task of visibleTasks) {
@@ -348,33 +368,14 @@ export const useTasks = () => {
 
     const flowNodes = $derived.by(() => {
         return visibleTasks.values()
-            .map(task => {
-                return {
-                    id: task.id.toString(),
-                    type: "task",
-                    position: task.pos.current,
-                    data: task,
-                };
-            })
+            .map(task => task.flowNode)
             .toArray();
     });
 
     const flowEdges = $derived.by(() => {
         return visibleTasks.values()
-            .flatMap(task => {
-                const parentId = task.id;
-                const childIds = parentsToChildIds.get(parentId);
-                if (childIds === undefined) return [];
-
-
-                return childIds.values()
-                    .map(childId => ({
-                        id: `e${parentId}-${childId}`,
-                        type: "ancestry",
-                        source: parentId.toString(),
-                        target: childId.toString(),
-                    }))
-            })
+            .map(task => task.flowEdge)
+            .filter(edge => edge !== null)
             .toArray();
     });
 
@@ -394,6 +395,7 @@ export const useTasks = () => {
             tasks.delete(task.id);
             parentsToChildIds.delete(task.id);
             layoutGraph.removeNode(task.id.toString());
+            visibleTasks.delete(task);
 
             updateNodePositions();
         },
