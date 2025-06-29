@@ -3,6 +3,7 @@ import { Handle, Position, type Node, type NodeProps } from "@xyflow/svelte";
 import { api } from "$api/client";
 import TextEntry from "./TextEntry.svelte";
 import * as DropdownMenu from "@/ui/dropdown-menu";
+import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 import { Button } from "@/ui/button";
 import Priority, { labels } from "./Priority.svelte";
 import Hours from "./Hours.svelte";
@@ -97,18 +98,35 @@ $effect(() => {
     class:done
     bind:clientHeight={elHeight}
 >
-    <Button
-        onclick={event => {
-            event.stopPropagation();
-            updateHideChildren(!task.hideChildren);
-        }}
+    <Tooltip.Provider
+        delayDuration={0}
+        disableHoverableContent
     >
-        {#if task.hideChildren}
-                <img src={collapsedNodeSvg} alt="collapsed node" />
-        {:else}
-                <img src={uncollapsedNodeSvg} alt="uncollapsed node" />
-        {/if}
-    </Button>
+        <Tooltip.Root>
+            <Tooltip.Trigger>
+                <Button
+                    onclick={event => {
+                        event.stopPropagation();
+                        updateHideChildren(!task.hideChildren);
+                    }}
+                >
+                    {#if task.hideChildren}
+                        <img src={collapsedNodeSvg} alt="collapsed node" />
+                    {:else}
+                        <img src={uncollapsedNodeSvg} alt="uncollapsed node" />
+                    {/if}
+                </Button>
+            </Tooltip.Trigger>
+
+            <Tooltip.Content>
+                {#if task.hideChildren}
+                    Child nodes are hidden; click to <b>show</b> them
+                {:else}
+                    Child nodes are shown; click to <b>hide</b> them
+                {/if}
+            </Tooltip.Content>
+        </Tooltip.Root>
+    </Tooltip.Provider>
 
     <task-title>
         <TextEntry

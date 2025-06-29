@@ -105,7 +105,6 @@ export const useTasks = () => {
 
 
     const {nodeEase, startPosAnimation} = useTaskAnimation();
-    $inspect(nodeEase())
 
 
     const createReactiveTask = (baseTask: Task) => {
