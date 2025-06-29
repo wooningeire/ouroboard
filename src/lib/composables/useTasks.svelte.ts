@@ -4,54 +4,6 @@ import { type Edge, type Node } from "@xyflow/svelte";
 import { tick, untrack } from "svelte";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
-type Position = { x: number; y: number };
-
-
-export const usePos = (newTarget: Position, nodeEase: () => number) => {
-    let last = $state(newTarget);
-    let target = $state(newTarget);
-    const current = $derived.by(() => {
-        if (nodeEase() === 1) {
-            return target;
-        }
-        
-        return {
-            x: last.x + (target.x - last.x) * nodeEase(),
-            y: last.y + (target.y - last.y) * nodeEase(),
-        };
-    });
-
-    let isFirst = true;
-
-    return {
-        get last() {
-            return last;
-        },
-        get target() {
-            return target;
-        },
-        get current() {
-            return current;
-        },
-        setTarget: (newTarget: Position) => {
-            if (isFirst) {
-                last = newTarget;
-                target = newTarget;
-
-                isFirst = false;
-            } else {
-                last = current;
-                target = newTarget;
-            }
-        },
-
-        doNotAnimateNextChange() {
-            isFirst = true;
-        },
-    };
-};
-
-
 export type ReactiveTask = {
     id: number,
 
@@ -68,11 +20,14 @@ export type ReactiveTask = {
         hr_remaining: number,
     }[],
     visible: boolean,
+    pos: {
+        x: number,
+        y: number,
+    },
 
     hrCompleted: number,
     hrRemaining: number,
     hrEstimateOriginal: number,
-    pos: ReturnType<typeof usePos>,
 
     elHeight: number,
 
@@ -100,9 +55,6 @@ export const useTasks = () => {
     layoutGraph.setGraph({ rankdir: "LR", align: "UL", nodesep: 10 });
 
 
-    const {nodeEase, startPosAnimation} = useTaskAnimation();
-
-
     const createReactiveTask = (baseTask: Task) => {
         let id = $state(baseTask.id);
         let title = $state(baseTask.title);
@@ -113,6 +65,7 @@ export const useTasks = () => {
         let clear = $state(baseTask.clear);
         let trashed = $state(baseTask.trashed);
         let hoursHistory = $state(baseTask.hoursHistory);
+        let pos = $state.raw({x: 0, y: 0});
 
         const hrCompleted = $derived(
             (hoursHistory.at(-1)?.hr_completed ?? 0)
@@ -142,8 +95,6 @@ export const useTasks = () => {
                 )
         );
         
-        const pos = usePos({ x: 0, y: 0 }, nodeEase);
-
         let elHeight = $state(0);
 
 
@@ -228,6 +179,13 @@ export const useTasks = () => {
                 trashed = newTrashed;
             },
 
+            get pos() {
+                return pos;
+            },
+            set pos(newPos: {x: number, y: number}) {
+                pos = newPos;
+            },
+
             hoursHistory,
 
             get hrCompleted() {
@@ -239,7 +197,6 @@ export const useTasks = () => {
             get hrEstimateOriginal() {
                 return hrEstimateOriginal;
             },
-            pos,
 
             get elHeight() {
                 return elHeight;
@@ -262,7 +219,7 @@ export const useTasks = () => {
         const flowNode = $derived({
             id: id.toString(),
             type: "task",
-            position: pos.current,
+            position: pos,
             data: reactiveTask,
         });
 
@@ -302,7 +259,6 @@ export const useTasks = () => {
 
                     untrack(() => {
                         visibleTasks.delete(reactiveTask);
-                        pos.doNotAnimateNextChange();
                     });
                 }
 
@@ -329,13 +285,11 @@ export const useTasks = () => {
             for (const task of visibleTasks) {
                 const {x, y} = layoutGraph.node(task.id.toString());
 
-                task.pos.setTarget({
+                task.pos = {
                     x: x - nodeWidth / 2,
                     y: y - task.elHeight / 2,
-                });
+                };
             }
-
-            startPosAnimation();
 
             relayoutQueued = false;
         });
@@ -406,37 +360,5 @@ export const useTasks = () => {
         get flowEdges() {
             return flowEdges;
         },
-    };
-};
-
-
-const useTaskAnimation = ({
-    duration = 250,
-}: {
-    duration?: number,
-}={}) => {
-    let nodePosAnimStartTime = Date.now();
-    let nodePosAnimProgress = $state(1);
-    const nodeEase = $derived(1 - (1 - nodePosAnimProgress)**3);
-    let handle = 0;
-
-    const animate = () => {
-        nodePosAnimProgress = Math.min((Date.now() - nodePosAnimStartTime) / duration, 1);
-        if (nodePosAnimProgress >= 1) return;
-        
-        handle = requestAnimationFrame(animate);
-    };
-
-    const startPosAnimation = () => {
-        cancelAnimationFrame(handle);
-        nodePosAnimStartTime = Date.now();
-
-        nodePosAnimProgress = 0;
-        handle = requestAnimationFrame(animate);
-    };
-
-    return {
-        nodeEase: () => nodeEase,
-        startPosAnimation,
     };
 };

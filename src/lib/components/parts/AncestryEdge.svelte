@@ -1,3 +1,12 @@
+<script lang="ts" module>
+const lastPositions = new Map<string, {
+    sourceX: number,
+    sourceY: number,
+    targetX: number,
+    targetY: number,
+}>();
+</script>
+
 <script lang="ts">
 import {
     BaseEdge,
@@ -9,20 +18,37 @@ import {
 import Button from '@/ui/button/button.svelte';
 import { api } from "$api/client";
 import {useTasks, tasksContextKey} from "$lib/composables/useTasks.svelte";
-    import { getContext } from "svelte";
+    import { getContext, onMount, tick } from "svelte";
  
 const { id, sourceX, sourceY, targetX, targetY, target, selected }: EdgeProps = $props();
- 
+
+
+
+// This is needed for path animations
+
+const newSourceCoords = {
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+};
+
+let sourceCoords = $state(lastPositions.get(id) ?? newSourceCoords);
+lastPositions.set(id, newSourceCoords);
+
+setTimeout(() => {
+    sourceCoords = newSourceCoords;
+});
+
+
 const [edgePath, labelX, labelY] = $derived(
     getBezierPath({
-        sourceX,
-        sourceY,
-        targetX,
-        targetY,
+        ...sourceCoords,
         sourcePosition: Position.Right,
-        targetPosition: Position.Left,
+        targetPosition: Position.Left,  
     }),
 );
+
 
 const tasksOps = getContext<ReturnType<typeof useTasks>>(tasksContextKey);
 

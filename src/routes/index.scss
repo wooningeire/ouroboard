@@ -2,6 +2,10 @@
     box-sizing: border-box;
 }
 
+:root {
+    --node-transition: 0.5s cubic-bezier(0.5,0,0,1);
+}
+
 body {
     margin: 0;
     width: 100vw;
@@ -38,7 +42,7 @@ textarea {
 
 /* xyflow theme files. Delete these to start from our base */
 
-.svelte-flow {
+div.svelte-flow {
     --xy-background-color: #f7f9fb;
     /* Custom Variables */
     --xy-theme-selected: #ff4000;
@@ -76,7 +80,7 @@ textarea {
 
 /* Customizing Default Theming */
 
-.svelte-flow__node {
+div.svelte-flow__node {
     box-shadow: var(--xy-node-boxshadow-default);
     border-radius: var(--xy-node-border-radius-default);
     background-color: var(--xy-node-background-color-default);
@@ -86,51 +90,58 @@ textarea {
     text-align: center;
     font-size: 12px;
     flex-direction: column;
+    transition: transform var(--node-transition);
     border: var(--xy-node-border-default);
     color: var(--xy-node-color, var(--xy-node-color-default));
     will-change: transform;
 }
 
-.svelte-flow__node.selectable:focus {
+div.svelte-flow__node.selectable:focus {
     box-shadow: 0px 0px 0px 4px var(--xy-theme-color-focus);
     border-color: #d9d9d9;
 }
 
-.svelte-flow__node.selectable:focus:active {
+div.svelte-flow__node.selectable:focus:active {
     box-shadow: var(--xy-node-boxshadow-default);
 }
 
-.svelte-flow__node.selectable:hover,
-.svelte-flow__node.draggable:hover {
+div.svelte-flow__node.selectable:hover,
+div.svelte-flow__node.draggable:hover {
     border-color: var(--xy-theme-hover);
 }
 
-.svelte-flow__node.selectable.selected {
+div.svelte-flow__node.selectable.selected {
     border-color: var(--xy-theme-selected);
     box-shadow: var(--xy-node-boxshadow-default);
 }
 
-.svelte-flow__node-group {
+div.svelte-flow__node-group {
     background-color: rgba(207, 182, 255, 0.4);
     border-color: #9e86ed;
 }
 
-.svelte-flow__edge.selectable:hover .svelte-flow__edge-path,
-.svelte-flow__edge.selectable.selected .svelte-flow__edge-path {
+g.svelte-flow__edge.selectable:hover .svelte-flow__edge-path,
+g.svelte-flow__edge.selectable.selected .svelte-flow__edge-path {
     stroke: var(--xy-theme-edge-hover);
 }
 
-.svelte-flow__handle {
-    background-color: var(--xy-handle-background-color-default);
+path.svelte-flow__edge-path,
+path.svelte-flow__edge-interaction {
+    transition: d var(--node-transition);
+}
+
+div.svelte-flow__handle {
+    border-color: #aaa;
+    background-color: #fff;
     width: 1rem;
     height: 1rem;
 }
 
-.svelte-flow__handle-left {
+div.svelte-flow__handle-left {
     left: -0.75rem;
 }
 
-.svelte-flow__handle-right {
+div.svelte-flow__handle-right {
     right: -0.75rem;
 }
 
