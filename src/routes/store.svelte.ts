@@ -43,6 +43,10 @@ export const usePos = (newTarget: Position, nodeEase: () => number) => {
                 target = newTarget;
             }
         },
+
+        doNotAnimateNextChange() {
+            isFirst = true;
+        },
     };
 };
 
@@ -63,6 +67,7 @@ export type ReactiveTask = {
         hr_completed: number,
         hr_remaining: number,
     }[],
+    visible: boolean,
 
     hrCompleted: number,
     hrRemaining: number,
@@ -78,50 +83,14 @@ export const useTasks = () => {
     const parentsToChildIds = $state(new SvelteMap<number, SvelteSet<number>>());
 
 
-    const nodeWidth = 500;
-    const layoutGraph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-    layoutGraph.setGraph({ rankdir: "LR" });
-
-    
-    const visibleTasks = $derived.by(() => {
-        const hasInvisibleAncestorResults = new Map<number, boolean>();
-
-        const hasInvisibleAncestor = (task: ReactiveTask): boolean => {
-            const savedResult = hasInvisibleAncestorResults.get(task.id);
-            if (savedResult !== undefined) {
-                return savedResult;
-            }
+    // const visibleTasks = new Set<ReactiveTask>();
 
 
-            let result: boolean;
-
-            if (task.parentId === null) {
-                result = false;
-            } else if (task.clear || task.trashed) {
-                result = true;
-            } else {
-                const parent = tasks.get(task.parentId);
-
-                if (parent === undefined) {
-                    result = true;
-                } else if (parent.hideChildren) {
-                    result = true;
-                } else {
-                    result = hasInvisibleAncestor(parent);
-                }
-            }
-            
-            hasInvisibleAncestorResults.set(task.id, result);
-            return result;
-        };
-
-
-        return new Map(
-            tasks.values()
-                .filter(task => !hasInvisibleAncestor(task))
-                .map(task => [task.id, task])
-        );
-    });
+    const visibleTasks = $derived(
+        tasks.values()
+            .filter(task => task.visible)
+            .toArray()
+    );
 
     $effect(() => {
         void visibleTasks;
@@ -130,42 +99,47 @@ export const useTasks = () => {
     });
 
 
+    const nodeWidth = 600;
+    const layoutGraph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+    layoutGraph.setGraph({ rankdir: "LR", align: "UL", nodesep: 10 });
+
+
     const {nodeEase, startPosAnimation} = useTaskAnimation();
 
 
-    const createReactiveTask = (task: Task) => {
-        let id = $state(task.id);
-        let title = $state(task.title);
-        let priority = $state(task.priority);
-        let parentId = $state(task.parent_id);
-        let hideChildren = $state(task.hide_children);
-        let alwaysExpanded = $state(task.always_expanded);
-        let clear = $state(task.clear);
-        let trashed = $state(task.trashed);
-        let hoursHistory = $state(task.hoursHistory);
+    const createReactiveTask = (baseTask: Task) => {
+        let id = $state(baseTask.id);
+        let title = $state(baseTask.title);
+        let priority = $state(baseTask.priority);
+        let parentId = $state(baseTask.parent_id);
+        let hideChildren = $state(baseTask.hide_children);
+        let alwaysExpanded = $state(baseTask.always_expanded);
+        let clear = $state(baseTask.clear);
+        let trashed = $state(baseTask.trashed);
+        let hoursHistory = $state(baseTask.hoursHistory);
 
         const hrCompleted = $derived(
-            (task.hoursHistory.at(-1)?.hr_completed ?? 0)
+            (hoursHistory.at(-1)?.hr_completed ?? 0)
                 + (
-                    parentsToChildIds.get(task.id)?.values()
+                    parentsToChildIds.get(id)?.values()
                         .map(childId => tasks.get(childId)?.hrCompleted ?? 0)
                         .reduce((a, b) => a + b, 0) 
                         ?? 0
                 )
         );
         const hrRemaining = $derived(
-            (task.hoursHistory.at(-1)?.hr_remaining ?? 0)
+            (hoursHistory.at(-1)?.hr_remaining ?? 0)
                 + (
-                    parentsToChildIds.get(task.id)?.values()
+                    parentsToChildIds.get(id)?.values()
                         .map(childId => tasks.get(childId)?.hrRemaining ?? 0)
                         .reduce((a, b) => a + b, 0) 
                         ?? 0
                 )
         );
         const hrEstimateOriginal = $derived(
-            (task.hoursHistory[0].hr_completed + task.hoursHistory[0].hr_remaining)
+            (hoursHistory[0].hr_completed + hoursHistory[0].hr_remaining)
                 + (
-                    parentsToChildIds.get(task.id)?.values()
+                    parentsToChildIds.get(id)?.values()
                         .map(childId => tasks.get(childId)?.hrEstimateOriginal ?? 0)
                         .reduce((a, b) => a + b, 0) 
                         ?? 0
@@ -175,6 +149,29 @@ export const useTasks = () => {
         const pos = usePos({ x: 0, y: 0 }, nodeEase);
 
         let elHeight = $state(0);
+
+
+        const visible = $derived.by(() => {
+            if (parentId === null) {
+                return true;
+            }
+
+            if (clear || trashed) {
+                return false;
+            }
+
+            const parent = tasks.get(parentId);
+
+            if (parent === undefined) {
+                return true;
+            }
+            
+            if (parent.hideChildren) {
+                return false;
+            }
+            
+            return parent.visible;
+        });
 
 
         return {
@@ -229,6 +226,10 @@ export const useTasks = () => {
             alwaysExpanded,
             clear,
 
+            get visible() {
+                return visible;
+            },
+
             get trashed() {
                 return trashed;
             },
@@ -238,9 +239,15 @@ export const useTasks = () => {
 
             hoursHistory,
 
-            hrCompleted,
-            hrRemaining,
-            hrEstimateOriginal,
+            get hrCompleted() {
+                return hrCompleted;
+            },
+            get hrRemaining() {
+                return hrRemaining;
+            },
+            get hrEstimateOriginal() {
+                return hrEstimateOriginal;
+            },
             pos,
 
             get elHeight() {
@@ -271,7 +278,7 @@ export const useTasks = () => {
         tick().then(() => {
             for (const [parentId, childIds] of parentsToChildIds) {
                 for (const childId of childIds.values()) {
-                    if (!visibleTasks.has(childId) || !visibleTasks.has(parentId)) {
+                    if (!tasks.get(childId)!.visible || !tasks.get(parentId)!.visible) {
                         layoutGraph.removeEdge(parentId.toString(), childId.toString());
                     } else {
                         layoutGraph.setEdge(parentId.toString(), childId.toString());
@@ -279,21 +286,27 @@ export const useTasks = () => {
                 }
             }
 
+            const visibleTasks: ReactiveTask[] = [];
+
             for (const task of tasks.values()) {
-                if (!visibleTasks.has(task.id)) {
+                if (!task.visible) {
                     layoutGraph.removeNode(task.id.toString());
+
+                    task.pos.doNotAnimateNextChange();
                 } else {
                     layoutGraph.setNode(task.id.toString(), {
                         width: nodeWidth,
                         height: task.elHeight,
                     });
+
+                    visibleTasks.push(task);
                 }
             }
 
 
             Dagre.layout(layoutGraph);
 
-            for (const task of visibleTasks.values()) {
+            for (const task of visibleTasks) {
                 const {x, y} = layoutGraph.node(task.id.toString());
 
                 task.pos.setTarget({
@@ -347,17 +360,21 @@ export const useTasks = () => {
     });
 
     const flowEdges = $derived.by(() => {
-        return parentsToChildIds.entries()
-            .flatMap(([parentId, childIds]) =>
-                childIds.values()
+        return visibleTasks.values()
+            .flatMap(task => {
+                const parentId = task.id;
+                const childIds = parentsToChildIds.get(parentId);
+                if (childIds === undefined) return [];
+
+
+                return childIds.values()
                     .map(childId => ({
                         id: `e${parentId}-${childId}`,
                         type: "ancestry",
                         source: parentId.toString(),
                         target: childId.toString(),
-                    })
-                )
-            )
+                    }))
+            })
             .toArray();
     });
 
@@ -392,14 +409,18 @@ export const useTasks = () => {
 };
 
 
-const useTaskAnimation = () => {
+const useTaskAnimation = ({
+    duration = 250,
+}: {
+    duration?: number,
+}={}) => {
     let nodePosAnimStartTime = Date.now();
     let nodePosAnimProgress = $state(1);
     const nodeEase = $derived(1 - (1 - nodePosAnimProgress)**3);
     let handle = 0;
 
     const animate = () => {
-        nodePosAnimProgress = Math.min((Date.now() - nodePosAnimStartTime) / 500, 1);
+        nodePosAnimProgress = Math.min((Date.now() - nodePosAnimStartTime) / duration, 1);
         if (nodePosAnimProgress >= 1) return;
         
         handle = requestAnimationFrame(animate);

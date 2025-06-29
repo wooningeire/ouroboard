@@ -7,7 +7,7 @@ import { Button } from "@/ui/button";
 import Priority, { labels } from "./Priority.svelte";
 import Hours from "./Hours.svelte";
 import {type ReactiveTask} from "./store.svelte";
-import { tick } from "svelte";
+import { tick, untrack } from "svelte";
 
 import collapsedNodeSvg from "$lib/assets/collapsed-node.svg";
 import uncollapsedNodeSvg from "$lib/assets/uncollapsed-node.svg";
@@ -84,22 +84,20 @@ const updateHideChildren = async (newHideChildren: boolean) => {
     });
 };
 
-
-let taskEl = $state<HTMLUnknownElement>();
-const elHeight = $derived.by(() => {
-    void task.title;
-    return taskEl?.offsetHeight ?? 0;
-});
-
+let elHeight = $state(0);
 $effect(() => {
-    task.elHeight = elHeight - 45;
+    if (selected) return;
+
+    task.elHeight = elHeight;
+    task.pos.doNotAnimateNextChange();
 });
+
 </script>
 
 <task-node
     class:expanded
     class:done
-    bind:this={taskEl}
+    bind:clientHeight={elHeight}
 >
     <Button
         onclick={event => {

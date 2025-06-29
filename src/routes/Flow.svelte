@@ -9,11 +9,13 @@ import {useTasks} from "./store.svelte";
 import { onMount, tick } from "svelte";
 import * as DropdownMenu from "@/ui/dropdown-menu";
 import AncestryEdge from "./AncestryEdge.svelte";
+    import { SvelteMap } from "svelte/reactivity";
 
 const { fitView } = useSvelteFlow();
 
 let contextMenuOpen = $state(false);
 let contextMenuPosition = $state({ x: 0, y: 0 });
+
 
 const tasksOps = useTasks();
 

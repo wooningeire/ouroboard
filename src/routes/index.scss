@@ -122,6 +122,16 @@ textarea {
 
 .svelte-flow__handle {
     background-color: var(--xy-handle-background-color-default);
+    width: 1rem;
+    height: 1rem;
+}
+
+.svelte-flow__handle-left {
+    left: -0.75rem;
+}
+
+.svelte-flow__handle-right {
+    right: -0.75rem;
 }
 
 .svelte-flow__handle.connectionindicator:hover {
