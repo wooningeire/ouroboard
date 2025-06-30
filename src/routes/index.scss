@@ -67,7 +67,7 @@ div.svelte-flow {
     --xy-resize-background-color-default: #9e86ed;
 }
 
-.svelte-flow.dark {
+div.svelte-flow.dark {
     --xy-node-boxshadow-default:
         0px 3.54px 4.55px 0px rgba(255, 255, 255, 0.05),
         /* light shadow */
@@ -90,10 +90,12 @@ div.svelte-flow__node {
     text-align: center;
     font-size: 12px;
     flex-direction: column;
-    transition: transform var(--node-transition);
     border: var(--xy-node-border-default);
     color: var(--xy-node-color, var(--xy-node-color-default));
     will-change: transform;
+
+
+    transition: transform var(--node-transition);
 }
 
 div.svelte-flow__node.selectable:focus {

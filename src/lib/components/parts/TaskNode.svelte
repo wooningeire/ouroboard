@@ -16,8 +16,10 @@ import uncollapsedNodeSvg from "$lib/assets/uncollapsed-node.svg";
 const {
     id,
     selected,
-    data: task,
-}: NodeProps<Node<ReactiveTask>> = $props();
+    data = $bindable(),
+}: NodeProps<Node<any>> = $props();
+
+const task = $derived<ReactiveTask>(data);
 
 const expanded = $derived(task.alwaysExpanded || selected);
 

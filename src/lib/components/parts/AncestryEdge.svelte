@@ -36,7 +36,7 @@ const newSourceCoords = {
 let sourceCoords = $state(lastPositions.get(id) ?? newSourceCoords);
 lastPositions.set(id, newSourceCoords);
 
-setTimeout(() => {
+requestAnimationFrame(() => {
     sourceCoords = newSourceCoords;
 });
 

@@ -1,39 +1,190 @@
 import type { Task } from "$api/client";
-import Dagre from "@dagrejs/dagre";
+import Dagre, { graphlib } from "@dagrejs/dagre";
 import { type Edge, type Node } from "@xyflow/svelte";
 import { tick, untrack } from "svelte";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
-export type ReactiveTask = {
-    id: number,
 
-    title: string,
-    priority: number | null,
-    parentId: number | null,
-    hideChildren: boolean,
-    alwaysExpanded: boolean,
-    clear: boolean,
-    trashed: boolean,
+export class ReactiveTask {
+    id: number;
+    title: string;
+    priority: number | null;
+    parentId: number | null;
+    hideChildren: boolean;
+    alwaysExpanded: boolean;
+    clear: boolean;
+    trashed: boolean;
     hoursHistory: {
         created_at: Date,
         hr_completed: number,
         hr_remaining: number,
-    }[],
-    visible: boolean,
+    }[];
+
     pos: {
         x: number,
         y: number,
-    },
+    };
 
-    hrCompleted: number,
-    hrRemaining: number,
-    hrEstimateOriginal: number,
+    hrCompleted: number;
+    hrRemaining: number;
+    hrEstimateOriginal: number;
 
-    elHeight: number,
+    visible: boolean;
+    elHeight: number;
 
-    flowNode: Node<ReactiveTask>,
-    flowEdge: Edge | null,
-};
+    flowNode: Node<Record<string, any>>;
+    flowEdge: Edge | null;
+
+
+    constructor(baseTask: Task, {
+        tasks,
+        parentsToChildIds,
+        layoutGraph,
+        nodeWidth,
+        updateNodePositions,
+        unlinkFromParent,
+        visibleTasks,
+    }: {
+        tasks: Map<number, ReactiveTask>,
+        parentsToChildIds: Map<number, Set<number>>,
+        layoutGraph: graphlib.Graph,
+        nodeWidth: number,
+        updateNodePositions: () => void,
+        unlinkFromParent: (childId: number, parentId: number | null) => void,
+        visibleTasks: Set<ReactiveTask>,
+    }) {
+        this.id = $state(baseTask.id);
+        this.title = $state(baseTask.title);
+        this.priority = $state(baseTask.priority);
+        this.parentId = $state(baseTask.parent_id);
+        this.hideChildren = $state(baseTask.hide_children);
+        this.alwaysExpanded = $state(baseTask.always_expanded);
+        this.clear = $state(baseTask.clear);
+        this.trashed = $state(baseTask.trashed);
+        this.hoursHistory = $state(baseTask.hoursHistory);
+        this.pos = $state.raw({x: 0, y: 0});
+
+        this.hrCompleted = $derived(
+            (this.hoursHistory.at(-1)?.hr_completed ?? 0)
+                + (
+                    parentsToChildIds.get(this.id)?.values()
+                        .map(childId => tasks.get(childId)?.hrCompleted ?? 0)
+                        .reduce((a, b) => a + b, 0) 
+                        ?? 0
+                )
+        );
+        this.hrRemaining = $derived(
+            (this.hoursHistory.at(-1)?.hr_remaining ?? 0)
+                + (
+                    parentsToChildIds.get(this.id)?.values()
+                        .map(childId => tasks.get(childId)?.hrRemaining ?? 0)
+                        .reduce((a, b) => a + b, 0) 
+                        ?? 0
+                )
+        );
+        this.hrEstimateOriginal = $derived(
+            (this.hoursHistory[0].hr_completed + this.hoursHistory[0].hr_remaining)
+                + (
+                    parentsToChildIds.get(this.id)?.values()
+                        .map(childId => tasks.get(childId)?.hrEstimateOriginal ?? 0)
+                        .reduce((a, b) => a + b, 0) 
+                        ?? 0
+                )
+        );
+        
+        this.elHeight = $state(0);
+
+
+        this.visible = $derived.by(() => {
+            if (this.clear || this.trashed) {
+                return false;
+            }
+
+            if (this.parentId === null) {
+                return true;
+            }
+
+            const parent = tasks.get(this.parentId);
+
+            if (parent === undefined) {
+                return true;
+            }
+            
+            if (parent.hideChildren) {
+                return false;
+            }
+            
+            return parent.visible;
+        });
+
+        this.flowNode = $derived({
+            id: this.id.toString(),
+            type: "task",
+            position: this.pos,
+            data: this,
+        });
+
+        this.flowEdge = $derived.by(() => {
+            if (this.parentId === null) return null;
+            
+            return {
+                id: `e${this.parentId}-${this.id}`,
+                type: "ancestry",
+                source: this.parentId.toString(),
+                target: this.id.toString(),
+            };
+        });
+
+
+        $effect.root(() => {
+            let lastId: number | undefined = undefined;
+            let lastParentId: number | null | undefined = undefined;
+            $effect(() => {
+                if (lastId !== undefined && lastId !== this.id) {
+                    layoutGraph.removeNode(lastId.toString());
+                }
+
+                if (lastParentId !== undefined && lastId !== undefined && (lastId !== this.id || lastParentId !== this.parentId)) {
+                    unlinkFromParent(lastId, lastParentId);
+                }
+
+                lastId = this.id;
+                lastParentId = this.parentId;
+            });
+
+            $effect(() => {
+                if (this.visible) {
+                    layoutGraph.setNode(this.id.toString(), {
+                        width: nodeWidth,
+                        height: this.elHeight,
+                    });
+
+                    if (this.parentId !== null) {
+                        layoutGraph.setEdge(this.parentId.toString(), this.id.toString());
+                    }
+
+                    untrack(() => {
+                        visibleTasks.add(this);
+                    });
+                } else {
+                    layoutGraph.removeNode(this.id.toString());
+
+                    if (this.parentId !== null) {
+                        layoutGraph.removeEdge(this.parentId.toString(), this.id.toString());
+                    }
+
+                    untrack(() => {
+                        visibleTasks.delete(this);
+                    });
+                }
+
+                updateNodePositions();
+            });
+
+            return () => {};
+        });
+    }
+}
 
 export const tasksContextKey = Symbol();
 
@@ -55,231 +206,13 @@ export const useTasks = () => {
     layoutGraph.setGraph({ rankdir: "LR", align: "UL", nodesep: 10 });
 
 
-    const createReactiveTask = (baseTask: Task) => {
-        let id = $state(baseTask.id);
-        let title = $state(baseTask.title);
-        let priority = $state(baseTask.priority);
-        let parentId = $state(baseTask.parent_id);
-        let hideChildren = $state(baseTask.hide_children);
-        let alwaysExpanded = $state(baseTask.always_expanded);
-        let clear = $state(baseTask.clear);
-        let trashed = $state(baseTask.trashed);
-        let hoursHistory = $state(baseTask.hoursHistory);
-        let pos = $state.raw({x: 0, y: 0});
-
-        const hrCompleted = $derived(
-            (hoursHistory.at(-1)?.hr_completed ?? 0)
-                + (
-                    parentsToChildIds.get(id)?.values()
-                        .map(childId => tasks.get(childId)?.hrCompleted ?? 0)
-                        .reduce((a, b) => a + b, 0) 
-                        ?? 0
-                )
-        );
-        const hrRemaining = $derived(
-            (hoursHistory.at(-1)?.hr_remaining ?? 0)
-                + (
-                    parentsToChildIds.get(id)?.values()
-                        .map(childId => tasks.get(childId)?.hrRemaining ?? 0)
-                        .reduce((a, b) => a + b, 0) 
-                        ?? 0
-                )
-        );
-        const hrEstimateOriginal = $derived(
-            (hoursHistory[0].hr_completed + hoursHistory[0].hr_remaining)
-                + (
-                    parentsToChildIds.get(id)?.values()
-                        .map(childId => tasks.get(childId)?.hrEstimateOriginal ?? 0)
-                        .reduce((a, b) => a + b, 0) 
-                        ?? 0
-                )
-        );
-        
-        let elHeight = $state(0);
-
-
-        const visible = $derived.by(() => {
-            if (clear || trashed) {
-                return false;
-            }
-
-            if (parentId === null) {
-                return true;
-            }
-
-            const parent = tasks.get(parentId);
-
-            if (parent === undefined) {
-                return true;
-            }
-            
-            if (parent.hideChildren) {
-                return false;
-            }
-            
-            return parent.visible;
-        });
-
-
-        const reactiveTask = {
-            get id() {
-                return id;
-            },
-            set id(newId: number) {
-                layoutGraph.removeNode(id.toString());
-
-                id = newId;
-            },
-
-            get title() {
-                return title;
-            },
-            set title(newTitle: string) {
-                title = newTitle;
-            },
-
-            get priority() {
-                return priority;
-            },
-            set priority(newPriority: number | null) {
-                priority = newPriority;
-            },
-
-            get parentId() {
-                return parentId;
-            },
-            set parentId(newParentId: number | null) {
-                if (parentId === newParentId) return;
-
-                unlinkFromParent(id, parentId);
-
-                parentId = newParentId;
-
-                linkToParent(id, parentId);
-
-                updateNodePositions();
-            },
-            get hideChildren() {
-                return hideChildren;
-            },
-            set hideChildren(newHideChildren: boolean) {
-                hideChildren = newHideChildren;
-            },
-            alwaysExpanded,
-            clear,
-
-            get visible() {
-                return visible;
-            },
-
-            get trashed() {
-                return trashed;
-            },
-            set trashed(newTrashed: boolean) {
-                trashed = newTrashed;
-            },
-
-            get pos() {
-                return pos;
-            },
-            set pos(newPos: {x: number, y: number}) {
-                pos = newPos;
-            },
-
-            hoursHistory,
-
-            get hrCompleted() {
-                return hrCompleted;
-            },
-            get hrRemaining() {
-                return hrRemaining;
-            },
-            get hrEstimateOriginal() {
-                return hrEstimateOriginal;
-            },
-
-            get elHeight() {
-                return elHeight;
-            },
-            set elHeight(newElHeight: number) {
-                if (elHeight === newElHeight) return;
-
-                elHeight = newElHeight;
-            },
-
-            get flowNode() {
-                return flowNode;
-            },
-            get flowEdge() {
-                return flowEdge;
-            },
-        };
-
-
-        const flowNode = $derived({
-            id: id.toString(),
-            type: "task",
-            position: pos,
-            data: reactiveTask,
-        });
-
-        const flowEdge = $derived.by(() => {
-            if (parentId === null) return null;
-            
-            return {
-                id: `e${parentId}-${id}`,
-                type: "ancestry",
-                source: parentId.toString(),
-                target: id.toString(),
-            };
-        });
-
-
-        $effect.root(() => {
-            $effect(() => {
-                if (visible) {
-                    layoutGraph.setNode(id.toString(), {
-                        width: nodeWidth,
-                        height: elHeight,
-                    });
-
-                    if (parentId !== null) {
-                        layoutGraph.setEdge(parentId.toString(), id.toString());
-                    }
-
-                    untrack(() => {
-                        visibleTasks.add(reactiveTask);
-                    });
-                } else {
-                    layoutGraph.removeNode(id.toString());
-
-                    if (parentId !== null) {
-                        layoutGraph.removeEdge(parentId.toString(), id.toString());
-                    }
-
-                    untrack(() => {
-                        visibleTasks.delete(reactiveTask);
-                    });
-                }
-
-                updateNodePositions();
-            });
-
-            return () => {};
-        });
-
-
-        return reactiveTask;
-    };
-
-
     let relayoutQueued = false;
     const updateNodePositions = () => {
         if (relayoutQueued) return;
 
         relayoutQueued = true;
 
-        tick().then(() => {
+        requestAnimationFrame(() => {
             Dagre.layout(layoutGraph);
 
             for (const task of visibleTasks) {
@@ -335,7 +268,15 @@ export const useTasks = () => {
 
     return {
         addTask: (baseTask: Task) => {
-            const task = createReactiveTask(baseTask);
+            const task = new ReactiveTask(baseTask, {
+                tasks,
+                parentsToChildIds,
+                layoutGraph,
+                nodeWidth,
+                updateNodePositions,
+                unlinkFromParent,
+                visibleTasks,
+            });
             tasks.set(task.id, task);
             linkToParent(task.id, task.parentId);
 
