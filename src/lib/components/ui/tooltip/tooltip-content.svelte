@@ -51,8 +51,9 @@
 <style lang="scss">
 :global {
 	.ouroboard-tooltip {
-		background-color: var(--primary-75);
+		background-color: oklch(1 0 0 / 0.75);
 		backdrop-filter: blur(0.0625rem);
+		box-shadow: 0 0.25rem 1rem oklch(0 0 0 / 0.125);
 	}
 }
 </style>

@@ -30,7 +30,7 @@ textarea {
 	padding: 0.25rem;
 	font-weight: 400;
 
-
+    background: oklch(1 0 0);
 	border: 1px solid #0000001f;
 	height: max-content;
 
@@ -157,8 +157,8 @@ div.svelte-flow__handle-right {
     height: 5px;
 }
 
-.svelte-flow__edge-label {
-    background: #f7f9fb;
+div.svelte-flow__edge-label {
+    background: none;
 }
 
 /* 

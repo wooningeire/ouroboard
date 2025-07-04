@@ -15,7 +15,7 @@ import uncollapsedNodeSvg from "$lib/assets/uncollapsed-node.svg";
     import { cubicInOut, cubicOut } from "svelte/easing";
 
 const {
-    task = $bindable(),
+    task,
     alwaysSelected = false,
     showChildToggle = false,
 }: {
@@ -32,6 +32,8 @@ const expanded = $derived(task.alwaysExpanded || selected);
 
 
 const saveTitle = async (title: string) => {
+    task.title = title;
+
     await api.task.edit({
         id: task.id,
         title,
@@ -43,6 +45,7 @@ const priorityString = $derived(priority?.toString() ?? "");
 
 const updatePriority = async (newPriorityString: string) => {
     const newPriority = newPriorityString === "" ? null : Number(newPriorityString);
+
     task.priority = newPriority;
 
     await api.task.edit({

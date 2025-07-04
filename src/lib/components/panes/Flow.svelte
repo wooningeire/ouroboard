@@ -49,9 +49,17 @@ const createNewTask = async (parentNodeId: number | null=null) => {
         parent_id: parentNodeId,
     });
 
+    // Instead of Object.assign, manually assign each property to preserve reactivity
     placeholderTask.id = taskResponse.id;
-    tasksOps.delTask(placeholderTask);
-    tasksOps.addTask(taskResponse);
+    placeholderTask.title = taskResponse.title;
+    placeholderTask.priority = taskResponse.priority;
+    placeholderTask.parentId = taskResponse.parent_id;
+    placeholderTask.hideChildren = taskResponse.hide_children;
+    placeholderTask.alwaysExpanded = taskResponse.always_expanded;
+    placeholderTask.clear = taskResponse.clear;
+    placeholderTask.trashed = taskResponse.trashed;
+    placeholderTask.hrCompleted = taskResponse.hr_completed;
+    placeholderTask.hrRemaining = taskResponse.hr_remaining;
 };
 
 const createNewRootTask = async () => {

@@ -7,32 +7,98 @@ import { useEvent } from "./useEvent.svelte";
 
 
 export class ReactiveTask {
-    id: number;
-    title: string;
-    priority: number | null;
-    parentId: number | null;
-    hideChildren: boolean;
-    alwaysExpanded: boolean;
-    clear: boolean;
-    trashed: boolean;
-    hrCompleted: number;
-    hrRemaining: number;
+    #tasks: Map<number, ReactiveTask>;
+    #parentsToChildIds: Map<number, Set<number>>;
+
+    id: number = $state(0);
+    title: string = $state("");
+    priority: number | null = $state(null);
+    parentId: number | null = $state(null);
+    hideChildren: boolean = $state(false);
+    alwaysExpanded: boolean = $state(false);
+    clear: boolean = $state(false);
+    trashed: boolean = $state(false);
+    hrCompleted: number = $state(0);
+    hrRemaining: number = $state(0);
 
     pos: {
         x: number,
         y: number,
-    };
+    } = $state.raw({x: 0, y: 0});
 
-    hrCompletedTotal: number;
-    hrRemainingTotal: number;
-    hrEstimateTotalOriginal: number;
+    hrCompletedTotal: number = $derived.by(() =>
+        (this.hrCompleted ?? 0)
+            + (
+                this.#parentsToChildIds.get(this.id)?.values()
+                    .map(childId => this.#tasks.get(childId)?.hrCompletedTotal ?? 0)
+                    .reduce((a, b) => a + b, 0) 
+                    ?? 0
+            )
+    );
+    hrRemainingTotal: number = $derived.by(() =>
+            (this.hrRemaining ?? 0)
+                + (
+                    this.#parentsToChildIds.get(this.id)?.values()
+                        .map(childId => this.#tasks.get(childId)?.hrRemainingTotal ?? 0)
+                        .reduce((a, b) => a + b, 0) 
+                        ?? 0
+                )
+        );
+    hrEstimateTotalOriginal: number = $derived.by(() =>
+        (this.hrCompleted + this.hrRemaining)
+            + (
+                this.#parentsToChildIds.get(this.id)?.values()
+                    .map(childId => this.#tasks.get(childId)?.hrEstimateTotalOriginal ?? 0)
+                    .reduce((a, b) => a + b, 0) 
+                    ?? 0
+            )
+    );
 
-    visible: boolean;
-    isParent: boolean;
-    elHeight: number;
+    visible: boolean = $derived.by(() => {
+        if (this.clear || this.trashed) {
+            return false;
+        }
 
-    flowNode: Node<Record<string, any>>;
-    flowEdge: Edge | null;
+        if (this.parentId === null) {
+            return true;
+        }
+
+        const parent = this.#tasks.get(this.parentId);
+
+        if (parent === undefined) {
+            return true;
+        }
+        
+        if (parent.hideChildren) {
+            return false;
+        }
+        
+        return parent.visible;
+    });
+    isParent: boolean = $derived.by(() => {
+        const childIds = this.#parentsToChildIds.get(this.id);
+        if (childIds === undefined) return false;
+
+        return childIds.size > 0;
+    });
+    elHeight: number = $state(0);
+
+    flowNode: Node<Record<string, any>> = $derived({
+        id: this.id.toString(),
+        type: "task",
+        position: this.pos,
+        data: this,
+    });
+    flowEdge: Edge | null = $derived.by(() => {
+        if (this.parentId === null) return null;
+        
+        return {
+            id: `e${this.parentId}-${this.id}`,
+            type: "ancestry",
+            source: this.parentId.toString(),
+            target: this.id.toString(),
+        };
+    });
 
 
     constructor(baseTask: Task, {
@@ -52,96 +118,19 @@ export class ReactiveTask {
         unlinkFromParent: (childId: number, parentId: number | null) => void,
         visibleTasks: Set<ReactiveTask>,
     }) {
-        this.id = $state(baseTask.id);
-        this.title = $state(baseTask.title);
-        this.priority = $state(baseTask.priority);
-        this.parentId = $state(baseTask.parent_id);
-        this.hideChildren = $state(baseTask.hide_children);
-        this.alwaysExpanded = $state(baseTask.always_expanded);
-        this.clear = $state(baseTask.clear);
-        this.trashed = $state(baseTask.trashed);
-        this.hrCompleted = $state(baseTask.hr_completed);
-        this.hrRemaining = $state(baseTask.hr_remaining);
-        this.pos = $state.raw({x: 0, y: 0});
+        this.#tasks = tasks;
+        this.#parentsToChildIds = parentsToChildIds;
 
-        this.hrCompletedTotal = $derived(
-            (this.hrCompleted ?? 0)
-                + (
-                    parentsToChildIds.get(this.id)?.values()
-                        .map(childId => tasks.get(childId)?.hrCompletedTotal ?? 0)
-                        .reduce((a, b) => a + b, 0) 
-                        ?? 0
-                )
-        );
-        this.hrRemainingTotal = $derived(
-            (this.hrRemaining ?? 0)
-                + (
-                    parentsToChildIds.get(this.id)?.values()
-                        .map(childId => tasks.get(childId)?.hrRemainingTotal ?? 0)
-                        .reduce((a, b) => a + b, 0) 
-                        ?? 0
-                )
-        );
-        this.hrEstimateTotalOriginal = $derived(
-            (this.hrCompleted + this.hrRemaining)
-                + (
-                    parentsToChildIds.get(this.id)?.values()
-                        .map(childId => tasks.get(childId)?.hrEstimateTotalOriginal ?? 0)
-                        .reduce((a, b) => a + b, 0) 
-                        ?? 0
-                )
-        );
-
-        this.elHeight = $state(0);
-
-
-        this.visible = $derived.by(() => {
-            if (this.clear || this.trashed) {
-                return false;
-            }
-
-            if (this.parentId === null) {
-                return true;
-            }
-
-            const parent = tasks.get(this.parentId);
-
-            if (parent === undefined) {
-                return true;
-            }
-            
-            if (parent.hideChildren) {
-                return false;
-            }
-            
-            return parent.visible;
-        });
-
-        this.isParent = $derived.by(() => {
-            const childIds = parentsToChildIds.get(this.id);
-            if (childIds === undefined) return false;
-                
-            return childIds.size > 0;
-        });
-
-        this.flowNode = $derived({
-            id: this.id.toString(),
-            type: "task",
-            position: this.pos,
-            data: this,
-        });
-
-        this.flowEdge = $derived.by(() => {
-            if (this.parentId === null) return null;
-            
-            return {
-                id: `e${this.parentId}-${this.id}`,
-                type: "ancestry",
-                source: this.parentId.toString(),
-                target: this.id.toString(),
-            };
-        });
-
+        this.id = baseTask.id;
+        this.title = baseTask.title;
+        this.priority = baseTask.priority;
+        this.parentId = baseTask.parent_id;
+        this.hideChildren = baseTask.hide_children;
+        this.alwaysExpanded = baseTask.always_expanded;
+        this.clear = baseTask.clear;
+        this.trashed = baseTask.trashed;
+        this.hrCompleted = baseTask.hr_completed;
+        this.hrRemaining = baseTask.hr_remaining;
 
         $effect.root(() => {
             let lastId: number | undefined = undefined;
@@ -210,7 +199,7 @@ export const useTasks = () => {
 
     const nodeWidth = 600;
     const layoutGraph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-    layoutGraph.setGraph({ rankdir: "LR", align: "UL", nodesep: 10 });
+    layoutGraph.setGraph({ rankdir: "LR", align: "UL", nodesep: 5 });
 
 
     let relayoutQueued = false;
