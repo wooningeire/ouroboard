@@ -107,6 +107,7 @@ hours-summary {
 hours-summary-text {
     display: flex;
     gap: 0.375rem;
+    font-size: 0.75rem;
 }
 
 big-number {
@@ -117,6 +118,10 @@ big-number {
 number-label {
     font-size: 0.75rem;
     opacity: 0.5;
+}
+
+number-entry {
+    font-size: 0.75rem;
 }
 
 </style>

@@ -81,20 +81,7 @@ div.svelte-flow.dark {
 /* Customizing Default Theming */
 
 div.svelte-flow__node {
-    box-shadow: var(--xy-node-boxshadow-default);
-    border-radius: var(--xy-node-border-radius-default);
-    background-color: var(--xy-node-background-color-default);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    font-size: 12px;
-    flex-direction: column;
-    border: var(--xy-node-border-default);
-    color: var(--xy-node-color, var(--xy-node-color-default));
     will-change: transform;
-
-
     transition: transform var(--node-transition);
 }
 

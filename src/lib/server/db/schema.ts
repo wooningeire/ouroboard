@@ -29,4 +29,11 @@ export const taskHoursTable = pgTable("task_hours", {
 	hr_remaining: real().notNull(),
 	hr_completed: real().notNull().default(0),
 	task_id: integer().notNull().references(() => taskTable.id),
-});
+}, table => [
+	foreignKey({
+		columns: [table.task_id],
+		foreignColumns: [taskTable.id],
+		name: "task",
+	})
+		.onDelete("cascade"),
+]);

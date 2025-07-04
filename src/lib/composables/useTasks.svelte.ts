@@ -1,8 +1,9 @@
 import type { Task } from "$api/client";
 import Dagre, { graphlib } from "@dagrejs/dagre";
 import { type Edge, type Node } from "@xyflow/svelte";
-import { tick, untrack } from "svelte";
+import { onMount, tick, untrack } from "svelte";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
+import { useEvent } from "./useEvent.svelte";
 
 
 export class ReactiveTask {
@@ -14,20 +15,17 @@ export class ReactiveTask {
     alwaysExpanded: boolean;
     clear: boolean;
     trashed: boolean;
-    hoursHistory: {
-        created_at: Date,
-        hr_completed: number,
-        hr_remaining: number,
-    }[];
+    hrCompleted: number;
+    hrRemaining: number;
 
     pos: {
         x: number,
         y: number,
     };
 
-    hrCompleted: number;
-    hrRemaining: number;
-    hrEstimateOriginal: number;
+    hrCompletedTotal: number;
+    hrRemainingTotal: number;
+    hrEstimateTotalOriginal: number;
 
     visible: boolean;
     elHeight: number;
@@ -61,37 +59,38 @@ export class ReactiveTask {
         this.alwaysExpanded = $state(baseTask.always_expanded);
         this.clear = $state(baseTask.clear);
         this.trashed = $state(baseTask.trashed);
-        this.hoursHistory = $state(baseTask.hoursHistory);
+        this.hrCompleted = $state(baseTask.hr_completed);
+        this.hrRemaining = $state(baseTask.hr_remaining);
         this.pos = $state.raw({x: 0, y: 0});
 
-        this.hrCompleted = $derived(
-            (this.hoursHistory.at(-1)?.hr_completed ?? 0)
+        this.hrCompletedTotal = $derived(
+            (this.hrCompleted ?? 0)
                 + (
                     parentsToChildIds.get(this.id)?.values()
-                        .map(childId => tasks.get(childId)?.hrCompleted ?? 0)
+                        .map(childId => tasks.get(childId)?.hrCompletedTotal ?? 0)
                         .reduce((a, b) => a + b, 0) 
                         ?? 0
                 )
         );
-        this.hrRemaining = $derived(
-            (this.hoursHistory.at(-1)?.hr_remaining ?? 0)
+        this.hrRemainingTotal = $derived(
+            (this.hrRemaining ?? 0)
                 + (
                     parentsToChildIds.get(this.id)?.values()
-                        .map(childId => tasks.get(childId)?.hrRemaining ?? 0)
+                        .map(childId => tasks.get(childId)?.hrRemainingTotal ?? 0)
                         .reduce((a, b) => a + b, 0) 
                         ?? 0
                 )
         );
-        this.hrEstimateOriginal = $derived(
-            (this.hoursHistory[0].hr_completed + this.hoursHistory[0].hr_remaining)
+        this.hrEstimateTotalOriginal = $derived(
+            (this.hrCompleted + this.hrRemaining)
                 + (
                     parentsToChildIds.get(this.id)?.values()
-                        .map(childId => tasks.get(childId)?.hrEstimateOriginal ?? 0)
+                        .map(childId => tasks.get(childId)?.hrEstimateTotalOriginal ?? 0)
                         .reduce((a, b) => a + b, 0) 
                         ?? 0
                 )
         );
-        
+
         this.elHeight = $state(0);
 
 
@@ -266,6 +265,11 @@ export const useTasks = () => {
             .toArray();
     });
 
+    
+
+    const addTaskEvent = useEvent<[ReactiveTask]>(); 
+    const delTaskEvent = useEvent<[ReactiveTask]>();
+
     return {
         addTask: (baseTask: Task) => {
             const task = new ReactiveTask(baseTask, {
@@ -280,6 +284,8 @@ export const useTasks = () => {
             tasks.set(task.id, task);
             linkToParent(task.id, task.parentId);
 
+            addTaskEvent.emit(task);
+
             return task;
         },
 
@@ -292,6 +298,8 @@ export const useTasks = () => {
             layoutGraph.removeNode(task.id.toString());
             visibleTasks.delete(task);
 
+            delTaskEvent.emit(task);
+
             updateNodePositions();
         },
 
@@ -300,6 +308,34 @@ export const useTasks = () => {
         },
         get flowEdges() {
             return flowEdges;
+        },
+
+        onAddTask: (handler: (task: ReactiveTask) => void) => {
+            addTaskEvent.on(handler);
+        },
+
+        onDelTask: (handler: (task: ReactiveTask) => void) => {
+            delTaskEvent.on(handler);
+        },
+
+        taskEffect: (handler: (task: ReactiveTask) => void) => {
+            for (const task of tasks.values()) {
+                handler(task);
+            }
+
+            addTaskEvent.on(task => {
+                $effect.root(() => {
+                    $effect(() => {
+                        handler(task);
+                    });
+
+                    return () => {};
+                });
+            });
+        },
+
+        tasks() {
+            return tasks.values();
         },
     };
 };

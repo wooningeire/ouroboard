@@ -22,27 +22,41 @@ const {
     class:no-priority={value === null}
     style:--value={value ?? ""}
 >
-    <span>{value}</span>
-    <span>
+    <priority-number>{value ?? "\u00d7"}</priority-number>
+    <priority-label>
         {#if value !== null}
             {labels[value]}
         {:else}
             No priority
         {/if}
-    </span>
+    </priority-label>
 </priority-badge>
 
 <style lang="scss">
 priority-badge {
     display: flex;
-    gap: 0.5rem;
+    align-items: stretch;
 
-    background: oklch(0.925 0.05 calc(var(--value) * 40deg));
-    padding: 0 0.5rem;
+    --bg-col: oklch(0.925 0.05 calc(var(--value) * 40deg));
+
     border-radius: 0.5rem;
 
     &.no-priority {
-        background: oklch(0.9 0 0deg);
+        --bg-col: oklch(0.9 0 0deg);
     }
+}
+priority-number {
+    display: block;
+    width: 1.25rem;
+    text-align: center;
+    border-radius: 0.5rem 0 0 0.5rem;
+    background: oklch(from var(--bg-col) calc(l + 0.05) calc(c - 0.025) h);
+    padding: 0 0.25rem;
+}
+
+priority-label {
+    border-radius: 0 0.5rem 0.5rem 0;
+    background: var(--bg-col);
+    padding: 0 0.25rem;
 }
 </style>
