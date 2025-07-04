@@ -8,7 +8,12 @@ import {useTasks, tasksContextKey} from "$lib/composables/useTasks.svelte";
 import { getContext, onMount, tick } from "svelte";
 import * as DropdownMenu from "@/ui/dropdown-menu";
 import AncestryEdge from "@/parts/AncestryEdge.svelte";
-    import { SvelteMap } from "svelte/reactivity";
+
+const {
+    tasksPromise,
+}: {
+    tasksPromise: Promise<unknown>,
+} = $props();
 
 const { fitView } = useSvelteFlow();
 
@@ -35,11 +40,9 @@ const createNewTask = async (parentNodeId: number | null=null) => {
         trashed: false,
         hide_children: false,
         always_expanded: false,
-        hoursHistory: [{
-            created_at: new Date(),
-            hr_completed: 0,
-            hr_remaining: 0,
-        }],
+        hr_completed: 0,
+        hr_remaining: 0,
+        hr_estimated: 0,
     });
 
     const taskResponse = await api.task.new({
@@ -149,14 +152,10 @@ const onDelete: OnDelete = async ({ nodes: deletedNodes }) => {
 };
 
 
+
+
 onMount(async () => {
-    const {tasks} = await api.task.list({});
-
-    for (const task of tasks) {
-        tasksOps.addTask(task);
-    }
-
-    await tick();
+    await tasksPromise;
 
     fitView();
 });

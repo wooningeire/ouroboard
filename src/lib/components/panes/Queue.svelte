@@ -8,10 +8,13 @@ const [send, receive] = crossfade({easing: cubicInOut});
 import { ReactiveTask, tasksContextKey, useTasks } from "$lib/composables/useTasks.svelte";
     import Priority from "@/parts/Priority.svelte";
     import TaskCard from "@/parts/TaskCard.svelte";
-    import TaskNode from "@/parts/TaskNode.svelte";
     import { getContext, tick } from "svelte";
-    import { flip } from "svelte/animate";
     import { SvelteMap, SvelteSet } from "svelte/reactivity";
+    import { flip } from "svelte/animate";
+
+
+let showDone = $state(false);
+let showParents = $state(false);
 
 const tasksSet = getContext<ReturnType<typeof useTasks>>(tasksContextKey);
 
@@ -44,6 +47,24 @@ tasksSet.onDelTask(task => {
 </script>
 
 <queue-page>
+    <options-rack>
+        <options-rack-option>
+            <input
+                type="checkbox"
+                bind:checked={showDone}
+            />
+            Done tasks
+        </options-rack-option>
+
+        <options-rack-option>
+            <input
+                type="checkbox"
+                bind:checked={showParents}
+            />
+            Parent tasks
+        </options-rack-option>
+    </options-rack>
+
     <task-priorities>
         {#each tasksByPriority as [priority, tasks], i (priority)}
             <task-priority-set>
@@ -51,14 +72,16 @@ tasksSet.onDelTask(task => {
 
                 <task-list>
                     {#each tasks as task (task.id)}
-                        <task-card-animator
-                            in:receive={{key: task.id}}
-                            out:send={{key: task.id}}
-                        >
-                            <TaskCard
-                                {task}
-                            />
-                        </task-card-animator>
+                        {#if (showDone || task.hrRemainingTotal !== 0) && (showParents || !task.isParent)}
+                            <task-card-animator
+                                in:receive={{key: task.id}}
+                                out:send={{key: task.id}}
+                            >
+                                <TaskCard
+                                    {task}
+                                />
+                            </task-card-animator>
+                        {/if}
                     {/each}
                 </task-list>
             </task-priority-set>
@@ -78,6 +101,7 @@ tasksSet.onDelTask(task => {
 <style lang="scss">
 queue-page {
     display: flex;
+    flex-direction: column;
 }
 
 task-priorities {
@@ -96,7 +120,7 @@ task-priority-set {
     flex-direction: column;
     gap: 0.5rem;
 
-    width: 25rem;
+    width: 20rem;
     padding: 0 0.5rem;
 
     border-radius: 0.5rem;

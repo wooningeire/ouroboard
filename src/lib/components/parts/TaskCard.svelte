@@ -51,7 +51,7 @@ const updatePriority = async (newPriorityString: string) => {
     });
 };
 
-const done = $derived(task.hrCompleted > 0 && task.hrRemaining === 0);
+const done = $derived(task.hrCompletedTotal > 0 && task.hrRemainingTotal === 0);
 
 const updateHoursHistory = async () => {
     await api.task.updateHours({
@@ -83,21 +83,6 @@ const updateHideChildren = async (newHideChildren: boolean) => {
     });
 };
 
-let elHeight = $state(task.elHeight);
-let nOngoingAnimations = $state(0);
-let initialAnimationsFinished = $state(false);
-let mounted = $state(false);
-$effect(() => {
-    if (!mounted || selected || !initialAnimationsFinished || nOngoingAnimations > 0) return;
-    task.elHeight = elHeight;
-});
-
-onMount(() => {
-    mounted = true;
-});
-
-
-
 let el: HTMLUnknownElement;
 
 let contentWidth = $state(0);
@@ -125,6 +110,26 @@ const slideOut = (node: HTMLElement): TransitionConfig => {
         css: (t, u) => `position: absolute; top: ${(expanded ? -1 : 1) * u * transitionHeight}px;`,
     };
 };
+
+let recentlySelected = $state(false);
+$effect(() => {
+    if (selected) {
+        recentlySelected = true;
+        return;
+    }
+
+    setTimeout(() => {
+        recentlySelected = false;
+    });
+});
+
+let transitioning = $state(false);
+
+let elHeight = $state(task.elHeight);
+$effect(() => {
+    if (recentlySelected || transitioning) return;
+    task.elHeight = elHeight;
+});
 </script>
 
 <svelte:window
@@ -136,7 +141,7 @@ const slideOut = (node: HTMLElement): TransitionConfig => {
 
 <task-card
     class:selected
-    bind:offsetHeight={null, value => elHeight = value ?? task.elHeight}
+    bind:offsetHeight={null, value => elHeight = el.offsetHeight}
     onclick={() => innerSelected = true}
     onkeydown={(event: KeyboardEvent) => event.key === "Enter" && (innerSelected = true)}
     role="button"
@@ -144,11 +149,8 @@ const slideOut = (node: HTMLElement): TransitionConfig => {
     bind:this={el}
     style:--content-height="{contentHeight}px"
     style:--content-width="{contentWidth}px"
-    ontransitionstart={() => nOngoingAnimations++}
-    ontransitionend={() => {
-        nOngoingAnimations--;
-        initialAnimationsFinished = true;
-    }}
+    ontransitionstart={() => transitioning = true}
+    ontransitionend={() => transitioning = false}
 >
     {#key expanded}
         <task-card-scroller>
@@ -161,35 +163,37 @@ const slideOut = (node: HTMLElement): TransitionConfig => {
                 bind:offsetHeight={null, value => contentHeight = value ?? 0}
             >
                 {#if showChildToggle}
-                    <Tooltip.Provider
-                        delayDuration={0}
-                        disableHoverableContent
-                    >
-                        <Tooltip.Root>
-                            <Tooltip.Trigger>
-                                <Button
-                                    onclick={event => {
-                                        event.stopPropagation();
-                                        updateHideChildren(!task.hideChildren);
-                                    }}
-                                >
-                                    {#if task.hideChildren}
-                                        <img src={collapsedNodeSvg} alt="collapsed node" />
-                                    {:else}
-                                        <img src={uncollapsedNodeSvg} alt="uncollapsed node" />
-                                    {/if}
-                                </Button>
-                            </Tooltip.Trigger>
+                    <task-child-toggle>
+                        <Tooltip.Provider
+                            delayDuration={0}
+                            disableHoverableContent
+                        >
+                            <Tooltip.Root>
+                                <Tooltip.Trigger>
+                                    <Button
+                                        onclick={event => {
+                                            event.stopPropagation();
+                                            updateHideChildren(!task.hideChildren);
+                                        }}
+                                    >
+                                        {#if task.hideChildren}
+                                            <img src={collapsedNodeSvg} alt="collapsed node" />
+                                        {:else}
+                                            <img src={uncollapsedNodeSvg} alt="uncollapsed node" />
+                                        {/if}
+                                    </Button>
+                                </Tooltip.Trigger>
 
-                            <Tooltip.Content>
-                                {#if task.hideChildren}
-                                    Child nodes are hidden; click to <b>show</b> them
-                                {:else}
-                                    Child nodes are shown; click to <b>hide</b> them
-                                {/if}
-                            </Tooltip.Content>
-                        </Tooltip.Root>
-                    </Tooltip.Provider>
+                                <Tooltip.Content>
+                                    {#if task.hideChildren}
+                                        Child nodes are hidden; click to <b>show</b> them
+                                    {:else}
+                                        Child nodes are shown; click to <b>hide</b> them
+                                    {/if}
+                                </Tooltip.Content>
+                            </Tooltip.Root>
+                        </Tooltip.Provider>
+                    </task-child-toggle>
                 {/if}
 
                 <task-title>
@@ -210,7 +214,7 @@ const slideOut = (node: HTMLElement): TransitionConfig => {
                         {/snippet}
                     </DropdownMenu.Trigger>
 
-                    <DropdownMenu.Content class="w-56">
+                    <DropdownMenu.Content>
                         <DropdownMenu.Group>
                             <DropdownMenu.RadioGroup
                                 value={priorityString}
@@ -323,12 +327,13 @@ task-card-content {
 }
 
 task-title {
-    max-width: 12rem;
-    font-size: 1.125rem;
+    max-width: 10rem;
+    font-size: 1rem;
     white-space: wrap;
 }
 
 img {
-    width: 1.125rem;
+    width: 1rem;
+    height: 1rem;
 }
 </style>

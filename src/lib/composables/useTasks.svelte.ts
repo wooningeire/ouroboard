@@ -28,6 +28,7 @@ export class ReactiveTask {
     hrEstimateTotalOriginal: number;
 
     visible: boolean;
+    isParent: boolean;
     elHeight: number;
 
     flowNode: Node<Record<string, any>>;
@@ -114,6 +115,13 @@ export class ReactiveTask {
             }
             
             return parent.visible;
+        });
+
+        this.isParent = $derived.by(() => {
+            const childIds = parentsToChildIds.get(this.id);
+            if (childIds === undefined) return false;
+                
+            return childIds.size > 0;
         });
 
         this.flowNode = $derived({

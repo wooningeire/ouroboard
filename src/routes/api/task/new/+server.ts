@@ -28,7 +28,9 @@ const endpoint = post(async ({
 
     return {
         ...taskRows[0],
-        hoursHistory: taskHoursRows.reverse(),
+        hr_completed: taskHoursRows[0].hr_completed,
+        hr_remaining: taskHoursRows[0].hr_remaining,
+        hr_estimated: taskHoursRows[0].hr_completed + taskHoursRows[0].hr_remaining,
     };
 });
 
