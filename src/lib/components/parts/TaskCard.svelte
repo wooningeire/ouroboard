@@ -10,7 +10,7 @@ import {type ReactiveTask} from "$lib/composables/useTasks.svelte";
 
 import collapsedNodeSvg from "$lib/assets/collapsed-node.svg";
 import uncollapsedNodeSvg from "$lib/assets/uncollapsed-node.svg";
-    import { mount, onMount, tick, untrack } from "svelte";
+    import { onMount } from "svelte";
     import { fade, fly, type TransitionConfig } from "svelte/transition";
     import { cubicInOut, cubicOut } from "svelte/easing";
 
@@ -99,6 +99,10 @@ $effect(() => {
 });
 
 const slideIn = (node: HTMLElement): TransitionConfig => {
+    if (!mounted) {
+        return { duration: 0 };
+    }
+
     return {
         duration: 250,
         easing: cubicOut,
@@ -107,12 +111,17 @@ const slideIn = (node: HTMLElement): TransitionConfig => {
 };
 
 const slideOut = (node: HTMLElement): TransitionConfig => {
+    if (!mounted) {
+        return { duration: 0 };
+    }
+
     return {
         duration: 250,
         easing: cubicOut,
         css: (t, u) => `position: absolute; top: ${(expanded ? -1 : 1) * u * transitionHeight}px;`,
     };
 };
+
 
 let recentlySelected = $state(false);
 $effect(() => {
@@ -127,6 +136,13 @@ $effect(() => {
 });
 
 let transitioning = $state(false);
+let mounted = $state(false);
+
+onMount(() => {
+    setTimeout(() => {
+        mounted = true;
+    });
+});
 
 let elHeight = $state(task.elHeight);
 $effect(() => {
@@ -144,14 +160,15 @@ $effect(() => {
 
 <task-card
     class:selected
+    class:mounted
     bind:offsetHeight={null, value => elHeight = el.offsetHeight}
     onclick={() => innerSelected = true}
     onkeydown={(event: KeyboardEvent) => event.key === "Enter" && (innerSelected = true)}
     role="button"
     tabindex="0"
     bind:this={el}
-    style:--content-height="{contentHeight}px"
-    style:--content-width="{contentWidth}px"
+    style:--content-height={mounted ? `${contentHeight}px` : "auto"}
+    style:--content-width={mounted ? `${contentWidth}px` : "auto"}
     ontransitionstart={() => transitioning = true}
     ontransitionend={() => transitioning = false}
 >

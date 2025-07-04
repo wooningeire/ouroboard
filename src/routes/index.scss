@@ -82,7 +82,10 @@ div.svelte-flow.dark {
 
 div.svelte-flow__node {
     will-change: transform;
-    transition: transform var(--node-transition);
+    
+    &:has(task-card.mounted) {
+        transition: transform var(--node-transition);
+    }
 }
 
 div.svelte-flow__node.selectable:focus {
