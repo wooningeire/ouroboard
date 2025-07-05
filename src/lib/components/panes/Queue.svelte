@@ -12,6 +12,7 @@ import { ReactiveTask, tasksContextKey, useTasksSet } from "$lib/composables/use
     import { SvelteMap, SvelteSet } from "svelte/reactivity";
     import { flip } from "svelte/animate";
     import { useTasksSorter } from "$lib/composables/useTasksSorter.svelte";
+    import PaneLabel from "@/parts/PaneLabel.svelte";
 
 
 let showDone = $state(false);
@@ -35,7 +36,7 @@ useTasksSorter({
 </script>
 
 <queue-page>
-    <options-rack>
+    <PaneLabel title="prio">
         <options-rack-option>
             <input
                 type="checkbox"
@@ -51,11 +52,11 @@ useTasksSorter({
             />
             Parent tasks
         </options-rack-option>
-    </options-rack>
+    </PaneLabel>
 
     <task-priorities>
         {#each tasksByPriority as [priority, tasks], i (priority)}
-            <task-priority-set>
+            <task-priority-set class:empty={tasks.size === 0}>
                 <Priority value={priority} />
 
                 <task-list>
@@ -88,23 +89,28 @@ useTasksSorter({
             {/if}
         {/each}
     </task-priorities>
-
-    <task-calendar>
-
-    </task-calendar>
 </queue-page>
 
 <style lang="scss">
 queue-page {
+    min-width: 0;
+    min-height: 0;
+
     display: flex;
     flex-direction: column;
+    align-items: stretch;
 }
 
 task-priorities {
+    height: 0;
+    flex-grow: 1;
+
+    padding-top: 0.5rem;
+
     display: flex;
     align-items: stretch;
     flex-wrap: nowrap;
-    overflow-y: auto;
+    overflow-x: auto;
 
     > * {
         flex-shrink: 0;
@@ -112,6 +118,7 @@ task-priorities {
 }
 
 task-priority-set {
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -120,6 +127,13 @@ task-priority-set {
     padding: 0 0.5rem;
 
     border-radius: 0.5rem;
+
+    &.empty {
+        flex-grow: 0;
+        width: unset;
+
+        opacity: 0.3333333;
+    }
 }
 
 task-list {
@@ -133,7 +147,7 @@ task-list {
 task-priority-divider {
     display: block;
     width: 1px;
-    background: oklch(0.95 0 0);
+    background: oklch(0.8 0.08 200);
 }
 
 task-card-animator {

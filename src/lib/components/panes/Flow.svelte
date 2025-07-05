@@ -11,6 +11,7 @@ import AncestryEdge from "@/parts/AncestryEdge.svelte";
     import { useTasksSorter } from "$lib/composables/useTasksSorter.svelte";
     import { SvelteMap, SvelteSet } from "svelte/reactivity";
     import { useTasksGraphLayout as useTasksGraph } from "$lib/composables/useTasksGraphLayout.svelte";
+    import PaneLabel from "@/parts/PaneLabel.svelte";
 
 const {
     tasksPromise,
@@ -187,48 +188,57 @@ const tasksGraph = useTasksGraph({
 </script>
 
 
-<options-rack>
-    <options-rack-item>
-        <input
-            type="checkbox"
-            bind:checked={showDone}
+<graph-page>
+    <PaneLabel title="tree">
+        <options-rack-item>
+            <input
+                type="checkbox"
+                bind:checked={showDone}
+            />
+            Done tasks
+        </options-rack-item>
+    </PaneLabel>
+
+    <SvelteFlow
+        nodes={tasksGraph.flowNodes}
+        edges={tasksGraph.flowEdges}
+        fitView
+        nodesDraggable={false}
+        onconnectstart={onConnectStart}
+        onconnectend={onConnectEnd}
+        onconnect={onConnect}
+        ondelete={onDelete}
+        onpanecontextmenu={onPaneContextMenu}
+        onpaneclick={onPaneClick}
+        onselectionchange={onSelectionChange}
+        deleteKey={["Backspace", "Delete"]}
+        nodeTypes={{
+            task: TaskNode,
+        }}
+        edgeTypes={{
+            ancestry: AncestryEdge,
+        }}
+    >
+        <Background />
+        <MiniMap />
+    </SvelteFlow>
+
+    <DropdownMenu.Root bind:open={contextMenuOpen}>
+        <DropdownMenu.Trigger
+            class="context-menu-trigger"
+            style="position: fixed; left: {contextMenuPosition.x}px; top: {contextMenuPosition.y}px; visibility: hidden;"
         />
-        Done tasks
-    </options-rack-item>
-</options-rack>
+        <DropdownMenu.Content>
+            <DropdownMenu.Item onclick={createNewRootTask}>
+                New root
+            </DropdownMenu.Item>
+        </DropdownMenu.Content>
+    </DropdownMenu.Root>
+</graph-page>
 
-<SvelteFlow
-    nodes={tasksGraph.flowNodes}
-    edges={tasksGraph.flowEdges}
-    fitView
-    nodesDraggable={false}
-    onconnectstart={onConnectStart}
-    onconnectend={onConnectEnd}
-    onconnect={onConnect}
-    ondelete={onDelete}
-    onpanecontextmenu={onPaneContextMenu}
-    onpaneclick={onPaneClick}
-    onselectionchange={onSelectionChange}
-    deleteKey={["Backspace", "Delete"]}
-    nodeTypes={{
-        task: TaskNode,
-    }}
-    edgeTypes={{
-        ancestry: AncestryEdge,
-    }}
->
-    <Background />
-    <MiniMap />
-</SvelteFlow>
-
-<DropdownMenu.Root bind:open={contextMenuOpen}>
-    <DropdownMenu.Trigger
-        class="context-menu-trigger"
-        style="position: fixed; left: {contextMenuPosition.x}px; top: {contextMenuPosition.y}px; visibility: hidden;"
-    />
-    <DropdownMenu.Content>
-        <DropdownMenu.Item onclick={createNewRootTask}>
-            New root
-        </DropdownMenu.Item>
-    </DropdownMenu.Content>
-</DropdownMenu.Root>
+<style lang="scss">
+graph-page {
+    display: flex;
+    flex-direction: column;
+}
+</style>

@@ -346,7 +346,7 @@ task-card {
 
     border-radius: 0.5rem;
     box-shadow:
-        0 0.0625rem 0.125rem oklch(0 0 0 / 0.1),
+        0 0.0625rem 0.125rem oklch(0.5 0.1 240 / 0.1),
         0 0 0 0.0625rem var(--border-col) inset;
 
     &.mounted {
@@ -358,13 +358,13 @@ task-card {
 
     --content-width: auto;
     --content-height: auto;
-    --border-col: oklch(0.9 0 0);
+    --border-col: oklch(0.85 0.02 250);
 
     &.selected {
-        --border-col: oklch(0.8 0.2 30);
+        --border-col: oklch(0.8 0.09 200);
 
         box-shadow:
-            0 0.25rem 2rem oklch(0.7 0.15 30),
+            0 0.25rem 2rem -0.5rem oklch(0.5 0.13 190),
             0 0 0 0.125rem var(--border-col) inset;
 
         position: relative;

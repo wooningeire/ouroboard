@@ -6,12 +6,34 @@
     --node-transition: 0.5s cubic-bezier(0.5,0,0,1);
 }
 
+@font-face {
+    font-family: "Kingthings Organica";
+    src: url("/kingthings-organica.extra-bold.ttf");
+}
+
 body {
     margin: 0;
     width: 100vw;
     height: 100vh;
 
     font-family: "Atkinson Hyperlegible Next", sans-serif;
+    --font-strong: "Kingthings Organica", "Atkinson Hyperlegible Next", sans-serif;
+
+    color: oklch(0.3 0.1 250);
+    background: linear-gradient(
+        0.25turn in oklch,
+        oklch(0.5 0.08 195),
+        oklch(0.5 0.08 310),
+    );
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-strong);
 }
 
 input,
@@ -43,13 +65,9 @@ textarea {
 /* xyflow theme files. Delete these to start from our base */
 
 div.svelte-flow {
-    --xy-background-color: #f7f9fb;
-    /* Custom Variables */
-    --xy-theme-selected: #ff4000;
-    --xy-theme-hover: #c5c5c5;
-    --xy-theme-edge-hover: black;
-    --xy-theme-color-focus: #e8e8e8;
-
+    mask: linear-gradient(#0000, #000 0.5rem);
+    --xy-background-color: #0000;
+    --background-color-default: #0000;
     /* Built-in Variables see https://svelteflow.dev/learn/customization/theming */
     --xy-node-border-default: 1px solid #ededed;
 

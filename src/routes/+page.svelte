@@ -27,7 +27,9 @@ onMount(async () => {
 </script>
 
 <main>
-    <title-bar>OUROBOARD</title-bar>
+    <title-bar>
+        <h1>ouroboard</h1>
+    </title-bar>
 
     <panes-grid>
         <graph-container>
@@ -50,11 +52,35 @@ onMount(async () => {
 main {
     width: 100vw;
     height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+}
+
+title-bar {
+    display: flex;
+    padding: 0 0.5rem;
+
+    line-height: 1;
+
+    background: linear-gradient(
+        0.25turn in oklch,
+        oklch(0.95 0.04 190),
+        oklch(0.99 0.02 250),
+        oklch(0.95 0.04 330)
+    );
+
+    > h1 {
+        font-size: 2.5rem;
+    }
 }
 
 panes-grid {
+    height: 0;
+    flex-grow: 1;
+
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
     place-items: stretch;
     gap: 0.5rem;
     padding: 0.5rem;
@@ -65,7 +91,16 @@ panes-grid {
         min-width: 0;
         min-height: 0;
 
+        display: grid;
+        place-items: stretch;
+        overflow: hidden;
+
         border-radius: 0.5rem;
+        background: linear-gradient(
+            0.25turn in oklch,
+            oklch(0.985 0.01 205),
+            oklch(0.985 0.01 295)
+        );
     }
 }
 
@@ -74,7 +109,7 @@ graph-container {
 }
 
 queue-container {
-    grid-area: 1/2;
+    grid-area: 2/1;
 }
 
 loading-overlay {
