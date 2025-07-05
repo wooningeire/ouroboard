@@ -64,12 +64,13 @@ useTasksSorter({
                         <task-card-animator
                             in:receive={{key: task.id}}
                             out:send={{key: task.id}}
-                            animate:flip
+                            animate:flip={{duration: 250, easing: cubicInOut}}
                         >
                             <TaskCard
                                 {task}
                                 constrainMaxWidth
                                 displayAncestorTitles
+                                showChildToggle={showParents}
                                 onSelectedChange={selected => {
                                     if (selected) {
                                         selectedTasks.add(task);

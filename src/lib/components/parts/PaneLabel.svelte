@@ -6,7 +6,7 @@ let {
     children,
 }: {
     title: string,
-    children: Snippet,
+    children?: Snippet,
 } = $props();
 </script>
 
@@ -17,7 +17,7 @@ let {
     </pane-title>
 
     <pane-options>
-        {@render children()}
+        {@render children?.()}
     </pane-options>
 </pane-label>
 
@@ -28,8 +28,8 @@ pane-label {
 
     background: linear-gradient(
         0.25turn in oklch,
-        oklch(0.96 0.04 190),
-        oklch(0.91 0.05 330)
+        oklch(0.96 0.05 190),
+        oklch(0.91 0.06 330)
     );
 }
 
@@ -39,8 +39,8 @@ pane-title {
     
     background: linear-gradient(
         0.25turn in oklch,
-        oklch(0.825 0.09 180),
-        oklch(0.825 0.09 200)
+        oklch(0.825 0.12 180),
+        oklch(0.825 0.1 200)
     );
     border-radius: 0 0 1.75rem 0 / 0 0 2rem 0;
     font-size: 1.375rem;

@@ -5,6 +5,8 @@ import { api } from "$api/client";
 import PriorityBoard from "@/panes/PriorityBoard.svelte";
 import {useTasksSet, tasksContextKey} from "$lib/composables/useTasksSet.svelte";
     import { onMount, setContext } from "svelte";
+    import Queue from "@/panes/Queue.svelte";
+    import BgOverlay from "@/parts/BgOverlay.svelte";
 
 
 const tasksSet = useTasksSet();
@@ -39,6 +41,10 @@ onMount(async () => {
             <PriorityBoard />
         </prio-container>
 
+        <queue-container>
+            <Queue />
+        </queue-container>
+
         {#await tasksPromise}
             <loading-overlay>Loading items</loading-overlay>
         {/await}
@@ -52,6 +58,7 @@ main {
 
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 title-bar {
@@ -70,6 +77,7 @@ panes-grid {
     flex-grow: 1;
 
     display: grid;
+    grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
     place-items: stretch;
     gap: 0.5rem;
@@ -93,6 +101,7 @@ panes-grid {
         display: grid;
         place-items: stretch;
         overflow: hidden;
+        position: relative;
 
         border-radius: 1.5rem / 2rem;
         background: linear-gradient(
@@ -104,18 +113,24 @@ panes-grid {
 }
 
 graph-container {
-    grid-area: 1/1;
+    grid-area: 1/1 / 2/3;
 }
 
 prio-container {
     grid-area: 2/1;
 }
 
+queue-container {
+    grid-area: 2/2;
+}
+
 loading-overlay {
-    grid-area: 1/1 / 3/2;
+    grid-area: 1/1 / 3/3;
 
     display: grid;
     place-items: center;
+    position: relative;
+    display: flex;
 
     font-size: 2rem;
 
