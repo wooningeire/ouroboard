@@ -1,7 +1,7 @@
 import type { Task } from "$api/client";
 import Dagre, { graphlib } from "@dagrejs/dagre";
 import { type Edge, type Node } from "@xyflow/svelte";
-import { onMount, tick, untrack } from "svelte";
+import { onDestroy, onMount, tick, untrack } from "svelte";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 import { useEvent } from "./useEvent.svelte";
 
@@ -9,6 +9,7 @@ import { useEvent } from "./useEvent.svelte";
 export class ReactiveTask {
     #tasks: Map<number, ReactiveTask>;
     #parentsToChildIds: Map<number, Set<number>>;
+    #taskFilter: (task: ReactiveTask) => boolean;
 
     id: number = $state(0);
     title: string = $state("");
@@ -20,6 +21,7 @@ export class ReactiveTask {
     trashed: boolean = $state(false);
     hrCompleted: number = $state(0);
     hrRemaining: number = $state(0);
+    hrEstimatedOrig: number = $state(0);
 
     pos: {
         x: number,
@@ -27,7 +29,7 @@ export class ReactiveTask {
     } = $state.raw({x: 0, y: 0});
 
     hrCompletedTotal: number = $derived.by(() =>
-        (this.hrCompleted ?? 0)
+        this.hrCompleted
             + (
                 this.#parentsToChildIds.get(this.id)?.values()
                     .map(childId => this.#tasks.get(childId)?.hrCompletedTotal ?? 0)
@@ -36,16 +38,16 @@ export class ReactiveTask {
             )
     );
     hrRemainingTotal: number = $derived.by(() =>
-            (this.hrRemaining ?? 0)
-                + (
-                    this.#parentsToChildIds.get(this.id)?.values()
-                        .map(childId => this.#tasks.get(childId)?.hrRemainingTotal ?? 0)
-                        .reduce((a, b) => a + b, 0) 
-                        ?? 0
-                )
-        );
+        this.hrRemaining
+            + (
+                this.#parentsToChildIds.get(this.id)?.values()
+                    .map(childId => this.#tasks.get(childId)?.hrRemainingTotal ?? 0)
+                    .reduce((a, b) => a + b, 0) 
+                    ?? 0
+            )
+    );
     hrEstimateTotalOriginal: number = $derived.by(() =>
-        (this.hrCompleted + this.hrRemaining)
+        this.hrEstimatedOrig
             + (
                 this.#parentsToChildIds.get(this.id)?.values()
                     .map(childId => this.#tasks.get(childId)?.hrEstimateTotalOriginal ?? 0)
@@ -54,7 +56,13 @@ export class ReactiveTask {
             )
     );
 
+    done: boolean = $derived(this.hrCompletedTotal > 0 && this.hrRemainingTotal === 0);
+
     visible: boolean = $derived.by(() => {
+        if (!this.#taskFilter(this)) {
+            return false;
+        }
+
         if (this.clear || this.trashed) {
             return false;
         }
@@ -104,6 +112,7 @@ export class ReactiveTask {
     constructor(baseTask: Task, {
         tasks,
         parentsToChildIds,
+        taskFilter,
         layoutGraph,
         nodeWidth,
         updateNodePositions,
@@ -112,6 +121,7 @@ export class ReactiveTask {
     }: {
         tasks: Map<number, ReactiveTask>,
         parentsToChildIds: Map<number, Set<number>>,
+        taskFilter: (task: ReactiveTask) => boolean,
         layoutGraph: graphlib.Graph,
         nodeWidth: number,
         updateNodePositions: () => void,
@@ -120,6 +130,7 @@ export class ReactiveTask {
     }) {
         this.#tasks = tasks;
         this.#parentsToChildIds = parentsToChildIds;
+        this.#taskFilter = taskFilter,
 
         this.id = baseTask.id;
         this.title = baseTask.title;
@@ -131,6 +142,7 @@ export class ReactiveTask {
         this.trashed = baseTask.trashed;
         this.hrCompleted = baseTask.hr_completed;
         this.hrRemaining = baseTask.hr_remaining;
+        this.hrEstimatedOrig = baseTask.hr_estimated_orig;
 
         $effect.root(() => {
             let lastId: number | undefined = undefined;
@@ -209,7 +221,7 @@ export const useTasks = () => {
         relayoutQueued = true;
 
         requestAnimationFrame(() => {
-            Dagre.layout(layoutGraph);
+            Dagre.layout(layoutGraph, {disableOptimalOrderHeuristic: true});
 
             for (const task of visibleTasks) {
                 const {x, y} = layoutGraph.node(task.id.toString());
@@ -267,11 +279,22 @@ export const useTasks = () => {
     const addTaskEvent = useEvent<[ReactiveTask]>(); 
     const delTaskEvent = useEvent<[ReactiveTask]>();
 
+    const taskFilters = $state(new SvelteSet<(task: ReactiveTask) => boolean>());
+    const checkTaskFilter = (task: ReactiveTask) => {
+        for (const filter of taskFilters) {
+            if (!filter(task)) {
+                return false;
+            }
+        }
+        return true;
+    };
+
     return {
         addTask: (baseTask: Task) => {
             const task = new ReactiveTask(baseTask, {
                 tasks,
                 parentsToChildIds,
+                taskFilter: checkTaskFilter,
                 layoutGraph,
                 nodeWidth,
                 updateNodePositions,
@@ -328,6 +351,16 @@ export const useTasks = () => {
 
                     return () => {};
                 });
+            });
+        },
+
+        addTaskFilter: (filter: (task: ReactiveTask) => boolean) => {
+            onMount(() => {
+                taskFilters.add(filter);
+            });
+
+            onDestroy(() => {
+                taskFilters.delete(filter);
             });
         },
 

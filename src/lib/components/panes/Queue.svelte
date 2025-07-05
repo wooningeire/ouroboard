@@ -8,7 +8,7 @@ const [send, receive] = crossfade({easing: cubicInOut});
 import { ReactiveTask, tasksContextKey, useTasks } from "$lib/composables/useTasks.svelte";
     import Priority from "@/parts/Priority.svelte";
     import TaskCard from "@/parts/TaskCard.svelte";
-    import { getContext, tick } from "svelte";
+    import { getContext } from "svelte";
     import { SvelteMap, SvelteSet } from "svelte/reactivity";
     import { flip } from "svelte/animate";
 
@@ -28,6 +28,12 @@ const tasksByPriority = $state(new SvelteMap<number | null, Set<ReactiveTask>>(
 const listenToTaskPriority = (task: ReactiveTask) => {
     let lastPriority: number | null | undefined = undefined;
     $effect(() => {
+        const passesFilters = (showDone || !task.done) && (showParents || !task.isParent)
+        if (!task.visible || !passesFilters) {
+            tasksByPriority.get(task.priority)?.delete(task);
+            return;
+        }
+
         if (lastPriority !== undefined && lastPriority !== task.priority) {
             tasksByPriority.get(lastPriority)?.delete(task);
         }
@@ -72,16 +78,16 @@ tasksSet.onDelTask(task => {
 
                 <task-list>
                     {#each tasks as task (task.id)}
-                        {#if (showDone || task.hrRemainingTotal !== 0) && (showParents || !task.isParent)}
-                            <task-card-animator
-                                in:receive={{key: task.id}}
-                                out:send={{key: task.id}}
-                            >
-                                <TaskCard
-                                    {task}
-                                />
-                            </task-card-animator>
-                        {/if}
+                        <task-card-animator
+                            in:receive={{key: task.id}}
+                            out:send={{key: task.id}}
+                            animate:flip
+                        >
+                            <TaskCard
+                                {task}
+                                constrainMaxWidth
+                            />
+                        </task-card-animator>
                     {/each}
                 </task-list>
             </task-priority-set>

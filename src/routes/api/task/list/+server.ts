@@ -61,7 +61,7 @@ const endpoint = get(async () => {
             ...data.task,
             hr_completed: data.task_hours_latest?.hr_completed ?? 0,
             hr_remaining: data.task_hours_latest?.hr_remaining ?? 0,
-            hr_estimated: (data.task_hours_orig?.hr_completed ?? 0) + (data.task_hours_orig?.hr_remaining ?? 0),
+            hr_estimated_orig: (data.task_hours_orig?.hr_completed ?? 0) + (data.task_hours_orig?.hr_remaining ?? 0),
         })),
     };
 });

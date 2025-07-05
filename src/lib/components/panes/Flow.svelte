@@ -42,24 +42,14 @@ const createNewTask = async (parentNodeId: number | null=null) => {
         always_expanded: false,
         hr_completed: 0,
         hr_remaining: 0,
-        hr_estimated: 0,
+        hr_estimated_orig: 0,
     });
 
     const taskResponse = await api.task.new({
         parent_id: parentNodeId,
     });
 
-    // Instead of Object.assign, manually assign each property to preserve reactivity
     placeholderTask.id = taskResponse.id;
-    placeholderTask.title = taskResponse.title;
-    placeholderTask.priority = taskResponse.priority;
-    placeholderTask.parentId = taskResponse.parent_id;
-    placeholderTask.hideChildren = taskResponse.hide_children;
-    placeholderTask.alwaysExpanded = taskResponse.always_expanded;
-    placeholderTask.clear = taskResponse.clear;
-    placeholderTask.trashed = taskResponse.trashed;
-    placeholderTask.hrCompleted = taskResponse.hr_completed;
-    placeholderTask.hrRemaining = taskResponse.hr_remaining;
 };
 
 const createNewRootTask = async () => {
@@ -168,7 +158,21 @@ onMount(async () => {
     fitView();
 });
 
+
+let showDone = $state(false);
+tasksOps.addTaskFilter(task => showDone || !task.done);
 </script>
+
+
+<options-rack>
+    <options-rack-item>
+        <input
+            type="checkbox"
+            bind:checked={showDone}
+        />
+        Done tasks
+    </options-rack-item>
+</options-rack>
 
 <SvelteFlow
     nodes={tasksOps.flowNodes}

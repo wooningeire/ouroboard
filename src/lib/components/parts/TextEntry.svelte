@@ -76,7 +76,11 @@ const placeholderWidth = $derived.by(() => {
         onkeydown={handleKeydown}
         bind:textContent={localValue}
         {disabled}
-        onclick={(event: PointerEvent) => focused && event.preventDefault()}
+        onclick={(event: PointerEvent) => {
+            if (!focused) return;
+            event.preventDefault();
+            event.stopPropagation();
+        }}
         style:--placeholder-width="{placeholderWidth}px"
     ></text-entry>
 </text-entry-container>

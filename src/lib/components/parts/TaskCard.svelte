@@ -18,10 +18,12 @@ const {
     task,
     alwaysSelected = false,
     showChildToggle = false,
+    constrainMaxWidth = false,
 }: {
     task: ReactiveTask,
     alwaysSelected?: boolean,
     showChildToggle?: boolean,
+    constrainMaxWidth?: boolean,
 } = $props();
 
 
@@ -53,8 +55,6 @@ const updatePriority = async (newPriorityString: string) => {
         priority: newPriority,
     });
 };
-
-const done = $derived(task.hrCompletedTotal > 0 && task.hrRemainingTotal === 0);
 
 const updateHoursHistory = async () => {
     await api.task.updateHours({
@@ -104,7 +104,7 @@ const slideIn = (node: HTMLElement): TransitionConfig => {
     }
 
     return {
-        duration: 250,
+        duration: 350,
         easing: cubicOut,
         css: (t, u) => `position: absolute; top: ${(expanded ? 1 : -1) * u * transitionHeight}px;`,
     };
@@ -116,7 +116,7 @@ const slideOut = (node: HTMLElement): TransitionConfig => {
     }
 
     return {
-        duration: 250,
+        duration: 350,
         easing: cubicOut,
         css: (t, u) => `position: absolute; top: ${(expanded ? -1 : 1) * u * transitionHeight}px;`,
     };
@@ -146,7 +146,7 @@ onMount(() => {
 
 let elHeight = $state(task.elHeight);
 $effect(() => {
-    if (recentlySelected || transitioning) return;
+    if (recentlySelected || transitioning || elHeight === 0) return;
     task.elHeight = elHeight;
 });
 </script>
@@ -161,6 +161,7 @@ $effect(() => {
 <task-card
     class:selected
     class:mounted
+    class:constrain-max-width={constrainMaxWidth}
     bind:offsetHeight={null, value => elHeight = el.offsetHeight}
     onclick={() => innerSelected = true}
     onkeydown={(event: KeyboardEvent) => event.key === "Enter" && (innerSelected = true)}
@@ -176,7 +177,7 @@ $effect(() => {
         <task-card-scroller>
             <task-card-content
                 class:expanded
-                class:done
+                class:done={task.done}
                 in:slideIn
                 out:slideOut
                 bind:offsetWidth={null, value => contentWidth = value ?? 0}
@@ -279,8 +280,14 @@ task-card {
     flex-shrink: 0;
 
     display: block;
-    width: var(--content-width);
-    max-width: 100%;
+    
+    &.constrain-max-width {
+        width: calc(min(100%, var(--content-width)));
+    }
+    &:not(.constrain-max-width) {
+        width: var(--content-width);
+    }
+
     height: var(--content-height);
     position: relative;
     overflow: hidden;
@@ -292,20 +299,30 @@ task-card {
     border-radius: 0.5rem;
     box-shadow:
         0 0.0625rem 0.125rem oklch(0 0 0 / 0.1),
-        0 0 0 1px var(--border-col) inset;
+        var(--selected-box-shadow);
 
-    transition:
-        height 0.25s cubic-bezier(.17,.67,.5,1),
-        width 0.25s cubic-bezier(.17,.67,.5,1);
+    &.mounted {
+        transition:
+            height 0.35s cubic-bezier(.3,0,.1,1),
+            width 0.35s cubic-bezier(.3,0,.1,1),
+            box-shadow 0.35s cubic-bezier(.3,0,.1,1);
+    }
 
     --content-width: auto;
     --content-height: auto;
     --border-col: oklch(0.9 0 0);
+    --selected-box-shadow: 0 0 0 0.0625rem var(--border-col) inset;
 
     &.selected {
-        --border-col: oklch(0.6 0.2 20);
-    }
+        --border-col: oklch(0.8 0.2 30);
 
+        box-shadow:
+            0 0.25rem 2rem oklch(0 0 0 / 0.25),
+            var(--selected-box-shadow);
+
+        position: relative;
+        z-index: 1;
+    }
 }
 
 task-card-scroller {
@@ -320,7 +337,6 @@ task-card-content {
     align-items: center;
     text-align: left;
     width: max-content;
-    // min-width: 100%;
     padding: 0.5rem;
 
     &.expanded {
