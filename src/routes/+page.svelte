@@ -26,39 +26,66 @@ onMount(async () => {
 
 </script>
 
+<main>
+    <title-bar>OUROBOARD</title-bar>
 
-<Tabs.Root bind:value={whichTab} class="w-full h-full">
-    <Tabs.List>
-        <Tabs.Trigger value="graph">Graph</Tabs.Trigger>
-        <Tabs.Trigger value="queue">Queue</Tabs.Trigger>
-    </Tabs.List>
-    
-    <Tabs.Content value="graph">
-        <SvelteFlowProvider>
-            <Flow {tasksPromise} />
-        </SvelteFlowProvider>
-    </Tabs.Content>
+    <panes-grid>
+        <graph-container>
+            <SvelteFlowProvider>
+                <Flow {tasksPromise} />
+            </SvelteFlowProvider>
+        </graph-container>
 
-    <Tabs.Content value="queue">
-        <Queue />
-    </Tabs.Content>
-</Tabs.Root>
+        <queue-container>
+            <Queue />
+        </queue-container>
 
-{#await tasksPromise}
-    <loading-overlay>Loading items</loading-overlay>
-{/await}
+        {#await tasksPromise}
+            <loading-overlay>Loading items</loading-overlay>
+        {/await}
+    </panes-grid>
+</main>
 
 <style lang="scss">
+main {
+    width: 100vw;
+    height: 100vh;
+}
+
+panes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    place-items: stretch;
+    gap: 0.5rem;
+    padding: 0.5rem;
+
+    > * {
+        width: 100%;
+        height: 100%;
+        min-width: 0;
+        min-height: 0;
+
+        border-radius: 0.5rem;
+    }
+}
+
+graph-container {
+    grid-area: 1/1;
+}
+
+queue-container {
+    grid-area: 1/2;
+}
+
 loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: oklch(0 0 0 / 0.25);
+    grid-area: 1/1 / -1/-1;
+
     display: grid;
     place-items: center;
-    color: oklch(1 0 0);
+
     font-size: 2rem;
+
+    color: oklch(1 0 0);
+    background: oklch(0 0 0 / 0.5);
 }
 </style>

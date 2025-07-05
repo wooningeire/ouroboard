@@ -22,6 +22,7 @@ const {
     onSelectedChange,
     onElWidthChange,
     onElHeightChange,
+    displayAncestorTitles = false,
 }: {
     task: ReactiveTask,
     forceSelected?: boolean,
@@ -30,6 +31,7 @@ const {
     onSelectedChange?: (selected: boolean) => void,
     onElWidthChange?: (width: number) => void,
     onElHeightChange?: (height: number) => void,
+    displayAncestorTitles?: boolean,
 } = $props();
 
 
@@ -138,7 +140,7 @@ $effect(() => {
 
     setTimeout(() => {
         recentlySelected = false;
-    }, 350);
+    }, 150);
 });
 
 let transitioning = $state(false);
@@ -172,6 +174,16 @@ $effect(() => {
         onSelectedChange?.(false);
     }}
 />
+
+{#if displayAncestorTitles}
+    <task-ancestor-titles>
+        {#each task.ancestorTasks as ancestorTask (ancestorTask.id)}
+            <task-ancestor-title>
+                {ancestorTask.title}
+            </task-ancestor-title>
+        {/each}
+    </task-ancestor-titles>
+{/if}
 
 <task-card
     class:selected
@@ -295,6 +307,23 @@ $effect(() => {
 
 
 <style lang="scss">
+task-ancestor-titles {
+    display: flex;
+    flex-direction: column;
+}
+
+task-ancestor-title {
+    display: flex;
+
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-style: italic;
+    font-size: 0.875rem;
+    line-height: 1.125;
+    
+    opacity: 0.5;
+}
+
 task-card {
     flex-shrink: 0;
 

@@ -120,7 +120,6 @@ g.svelte-flow__edge.selectable.selected .svelte-flow__edge-path {
 path.svelte-flow__edge-path,
 path.svelte-flow__edge-interaction {
     transition: d var(--node-transition);
-    transition-delay: 0s;
 }
 
 div.svelte-flow__handle {

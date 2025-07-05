@@ -7,17 +7,17 @@ export class ReactiveTask {
     #tasks: Map<number, ReactiveTask>;
     #parentsToChildIds: Map<number, Set<number>>;
 
-    id: number = $state(0);
-    title: string = $state("");
-    priority: number | null = $state(null);
-    parentId: number | null = $state(null);
-    hideChildren: boolean = $state(false);
-    alwaysExpanded: boolean = $state(false);
-    clear: boolean = $state(false);
-    trashed: boolean = $state(false);
-    hrCompleted: number = $state(0);
-    hrRemaining: number = $state(0);
-    hrEstimatedOrig: number = $state(0);
+    id: number = $state()!;
+    title: string = $state()!;
+    priority: number | null = $state()!;
+    parentId: number | null = $state()!;
+    hideChildren: boolean = $state()!;
+    alwaysExpanded: boolean = $state()!;
+    clear: boolean = $state()!;
+    trashed: boolean = $state()!;
+    hrCompleted: number = $state()!;
+    hrRemaining: number = $state()!;
+    hrEstimatedOrig: number = $state()!;
 
     pos: {
         x: number,
@@ -80,6 +80,20 @@ export class ReactiveTask {
         if (childIds === undefined) return false;
 
         return childIds.size > 0;
+    });
+
+    ancestorTasks = $derived.by(() => {
+        const ancestors: ReactiveTask[] = [];
+        let currentId = this.parentId;
+        while (currentId !== null) {
+            const currentTask = this.#tasks.get(currentId);
+            if (currentTask === undefined) break;
+
+            ancestors.push(currentTask);
+            currentId = currentTask.parentId;
+        }
+
+        return ancestors.toReversed();
     });
 
     constructor(baseTask: Task, {

@@ -69,7 +69,7 @@ export const useTasksGraphLayout = ({
 
                 task.pos = {
                     x: x - width / 2,
-                    y: y - (untrack(() => graphTasks).get(task)?.elDimensions.height ?? 0) / 2,
+                    y: y - (untrack(() => graphTasks.get(task))?.elDimensions.height ?? 0) / 2,
                 };
             }
             
@@ -90,7 +90,7 @@ export const useTasksGraphLayout = ({
     const addToGraph = (task: ReactiveTask) => {
         layoutGraph.setNode(task.id.toString(), {
             width: width,
-            height: untrack(() => graphTasks).get(task)?.elDimensions.height ?? 0,
+            height: untrack(() => graphTasks.get(task))?.elDimensions.height ?? 0,
         });
 
         if (task.parentId !== null) {
@@ -106,23 +106,27 @@ export const useTasksGraphLayout = ({
 
         const visible = $derived(tasks.has(task));
 
+        const graphTask = new GraphTask(task);
+
         $effect(() => {
             if (visible) {
+                if (!untrack(() => graphTasks).has(task)) {
+                    graphTasks.set(task, graphTask);
+                }
+
                 if ((lastId !== task.id || lastParentId !== task.parentId) && lastId !== undefined && lastParentId !== undefined) {
                     removeFromGraph(lastId!, lastParentId!);
                 }
-                addToGraph(task);
 
-                if (!untrack(() => graphTasks).has(task)) {
-                    graphTasks.set(task, new GraphTask(task));
-                }
+                addToGraph(task);
                 
             } else {
-                removeFromGraph(task.id, task.parentId);
-
                 if (untrack(() => graphTasks).has(task)) {
                     graphTasks.delete(task);
                 }
+
+                removeFromGraph(task.id, task.parentId);
+
             }
         
             lastId = task.id;

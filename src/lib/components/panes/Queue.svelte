@@ -68,6 +68,7 @@ useTasksSorter({
                             <TaskCard
                                 {task}
                                 constrainMaxWidth
+                                displayAncestorTitles
                                 onSelectedChange={selected => {
                                     if (selected) {
                                         selectedTasks.add(task);

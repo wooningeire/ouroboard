@@ -141,7 +141,6 @@ const onConnect: OnConnect = async (connection: Connection) => {
 // };
 
 const onDelete: OnDelete = async ({ nodes: deletedNodes }) => {
-    console.log(deletedNodes);
     for (const node of deletedNodes) {
         const task = tasksSet.getTask(Number(node.id));
         console.log(task);
