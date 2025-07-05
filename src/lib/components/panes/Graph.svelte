@@ -189,7 +189,7 @@ const tasksGraph = useTasksGraph({
 
 
 <graph-page>
-    <PaneLabel title="tree">
+    <PaneLabel title="graph">
         <options-rack-item>
             <input
                 type="checkbox"

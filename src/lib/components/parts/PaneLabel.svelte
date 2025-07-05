@@ -35,11 +35,16 @@ pane-label {
 
 pane-title {
     display: flex;
-    padding: 0 1rem;
+    padding: 0 1.5rem;
     
-    background: oklch(0.875 0.1 180);
-    font-size: 1.25rem;
-    line-height: 1.25;
+    background: linear-gradient(
+        0.25turn in oklch,
+        oklch(0.825 0.09 180),
+        oklch(0.825 0.09 200)
+    );
+    border-radius: 0 0 1.75rem 0 / 0 0 2rem 0;
+    font-size: 1.375rem;
+    line-height: 1.125;
 }
 
 pane-options {

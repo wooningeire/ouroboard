@@ -1,13 +1,10 @@
 <script lang="ts">
 import { SvelteFlowProvider } from "@xyflow/svelte";
-import Flow from "@/panes/Flow.svelte";
-import * as Tabs from "@/ui/tabs/";
+import Graph from "@/panes/Graph.svelte";
 import { api } from "$api/client";
-import Queue from "@/panes/Queue.svelte";
+import PriorityBoard from "@/panes/PriorityBoard.svelte";
 import {useTasksSet, tasksContextKey} from "$lib/composables/useTasksSet.svelte";
     import { onMount, setContext } from "svelte";
-
-let whichTab = $state("graph");
 
 
 const tasksSet = useTasksSet();
@@ -34,13 +31,13 @@ onMount(async () => {
     <panes-grid>
         <graph-container>
             <SvelteFlowProvider>
-                <Flow {tasksPromise} />
+                <Graph {tasksPromise} />
             </SvelteFlowProvider>
         </graph-container>
 
-        <queue-container>
-            <Queue />
-        </queue-container>
+        <prio-container>
+            <PriorityBoard />
+        </prio-container>
 
         {#await tasksPromise}
             <loading-overlay>Loading items</loading-overlay>
@@ -63,13 +60,6 @@ title-bar {
 
     line-height: 1;
 
-    background: linear-gradient(
-        0.25turn in oklch,
-        oklch(0.95 0.04 190),
-        oklch(0.99 0.02 250),
-        oklch(0.95 0.04 330)
-    );
-
     > h1 {
         font-size: 2.5rem;
     }
@@ -85,6 +75,15 @@ panes-grid {
     gap: 0.5rem;
     padding: 0.5rem;
 
+    border-radius: 1.875rem / 2.25rem;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    background: linear-gradient(
+        0.25turn in oklch,
+        oklch(0.5 0.08 195),
+        oklch(0.5 0.08 310),
+    );
+
     > * {
         width: 100%;
         height: 100%;
@@ -95,7 +94,7 @@ panes-grid {
         place-items: stretch;
         overflow: hidden;
 
-        border-radius: 0.5rem;
+        border-radius: 1.5rem / 2rem;
         background: linear-gradient(
             0.25turn in oklch,
             oklch(0.985 0.01 205),
@@ -108,12 +107,12 @@ graph-container {
     grid-area: 1/1;
 }
 
-queue-container {
+prio-container {
     grid-area: 2/1;
 }
 
 loading-overlay {
-    grid-area: 1/1 / -1/-1;
+    grid-area: 1/1 / 3/2;
 
     display: grid;
     place-items: center;
@@ -121,6 +120,6 @@ loading-overlay {
     font-size: 2rem;
 
     color: oklch(1 0 0);
-    background: oklch(0 0 0 / 0.5);
+    background: oklch(0.3 0.15 210 / 0.85);
 }
 </style>

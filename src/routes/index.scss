@@ -22,8 +22,9 @@ body {
     color: oklch(0.3 0.1 250);
     background: linear-gradient(
         0.25turn in oklch,
-        oklch(0.5 0.08 195),
-        oklch(0.5 0.08 310),
+        oklch(0.95 0.04 190),
+        oklch(0.99 0.02 250),
+        oklch(0.95 0.04 330)
     );
 }
 
@@ -34,6 +35,7 @@ h4,
 h5,
 h6 {
     font-family: var(--font-strong);
+    color: oklch(0.3 0.12 210);
 }
 
 input,
@@ -65,7 +67,6 @@ textarea {
 /* xyflow theme files. Delete these to start from our base */
 
 div.svelte-flow {
-    mask: linear-gradient(#0000, #000 0.5rem);
     --xy-background-color: #0000;
     --background-color-default: #0000;
     /* Built-in Variables see https://svelteflow.dev/learn/customization/theming */

@@ -45,6 +45,7 @@ priority-badge {
 
     outline: 0.0625rem solid var(--bg-col);
     color: oklch(from var(--bg-col) 0.3 calc(c + 0.05) calc(h + 50));
+    background: var(--bg-col);
 
     &.no-priority {
         --bg-col: oklch(0.9 0 0deg);
@@ -67,7 +68,6 @@ priority-number {
 
 priority-label {
     border-radius: 0 0.5rem 0.5rem 0;
-    background: var(--bg-col);
     padding: 0 0.25rem;
 }
 </style>

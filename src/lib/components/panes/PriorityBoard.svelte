@@ -36,7 +36,7 @@ useTasksSorter({
 </script>
 
 <queue-page>
-    <PaneLabel title="prio">
+    <PaneLabel title="priority board">
         <options-rack-option>
             <input
                 type="checkbox"
