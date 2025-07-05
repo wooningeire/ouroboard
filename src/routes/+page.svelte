@@ -4,14 +4,14 @@ import Flow from "@/panes/Flow.svelte";
 import * as Tabs from "@/ui/tabs/";
 import { api } from "$api/client";
 import Queue from "@/panes/Queue.svelte";
-import {useTasks, tasksContextKey} from "$lib/composables/useTasks.svelte";
-    import { onMount, setContext, tick } from "svelte";
+import {useTasksSet, tasksContextKey} from "$lib/composables/useTasksSet.svelte";
+    import { onMount, setContext } from "svelte";
 
 let whichTab = $state("graph");
 
 
-const tasksOps = useTasks();
-setContext(tasksContextKey, tasksOps);
+const tasksSet = useTasksSet();
+setContext(tasksContextKey, tasksSet);
 
 
 const tasksPromise = api.task.list({});
@@ -20,7 +20,7 @@ onMount(async () => {
     const {tasks} = await tasksPromise;
 
     for (const task of tasks) {
-        tasksOps.addTask(task);
+        tasksSet.addTask(task);
     }
 });
 

@@ -1,5 +1,5 @@
 import { SvelteSet } from "svelte/reactivity";
-import type { ReactiveTask, useTasks } from "./useTasks.svelte"
+import type { ReactiveTask, useTasksSet } from "./useTasksSet.svelte"
 import { useEvent } from "./useEvent.svelte";
 
 export const useTasksSorter = ({
@@ -7,7 +7,7 @@ export const useTasksSorter = ({
     filterTask,
     mapTaskToBucket,
 }: {
-    tasksSet: ReturnType<typeof useTasks>,
+    tasksSet: ReturnType<typeof useTasksSet>,
     filterTask: (task: ReactiveTask) => boolean,
     mapTaskToBucket: (task: ReactiveTask) => Set<ReactiveTask> | null,
 }) => {

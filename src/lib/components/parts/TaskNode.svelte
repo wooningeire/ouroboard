@@ -1,24 +1,28 @@
 <script lang="ts">
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/svelte";
-import {ReactiveTask} from "$lib/composables/useTasks.svelte";
+import {ReactiveTask} from "$lib/composables/useTasksSet.svelte";
 
 import TaskCard from "./TaskCard.svelte";
+    import { GraphTask } from "$lib/composables/useTasksGraphLayout.svelte";
 
 const {
     selected,
     data = $bindable(),
 }: NodeProps<Node<any>> = $props();
 
-const task = $derived<ReactiveTask>(data);
+const graphTask = $derived<GraphTask>(data);
+const task = $derived(data.task);
 </script>
 
 <task-spacer
-    style:--height="{task.elHeight}px"
+    style:--height="{graphTask.elDimensions.height}px"
 >
     <TaskCard
         {task}
         forceSelected={selected}
         showChildToggle
+        onElWidthChange={width => graphTask.elDimensions.width = width}
+        onElHeightChange={height => graphTask.elDimensions.height = height}
     />
 </task-spacer>
 

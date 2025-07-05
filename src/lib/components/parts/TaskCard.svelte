@@ -6,7 +6,7 @@ import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 import { Button } from "@/ui/button";
 import Priority, { labels } from "./Priority.svelte";
 import Hours from "./Hours.svelte";
-import {type ReactiveTask} from "$lib/composables/useTasks.svelte";
+import {type ReactiveTask} from "$lib/composables/useTasksSet.svelte";
 
 import collapsedNodeSvg from "$lib/assets/collapsed-node.svg";
 import uncollapsedNodeSvg from "$lib/assets/uncollapsed-node.svg";
@@ -19,13 +19,17 @@ const {
     forceSelected = false,
     showChildToggle = false,
     constrainMaxWidth = false,
-    onSelectedChange = () => {},
+    onSelectedChange,
+    onElWidthChange,
+    onElHeightChange,
 }: {
     task: ReactiveTask,
     forceSelected?: boolean,
     showChildToggle?: boolean,
     constrainMaxWidth?: boolean,
     onSelectedChange?: (selected: boolean) => void,
+    onElWidthChange?: (width: number) => void,
+    onElHeightChange?: (height: number) => void,
 } = $props();
 
 
@@ -146,10 +150,18 @@ onMount(() => {
     });
 });
 
-let elHeight = $state(task.elHeight);
+let elWidth = $state(0);
+let elHeight = $state(0);
 $effect(() => {
-    if (recentlySelected || transitioning || elHeight === 0) return;
-    task.elHeight = elHeight;
+    if (recentlySelected || transitioning) return;
+
+    if (elWidth !== 0) {
+        onElWidthChange?.(elWidth);
+    }
+
+    if (elHeight !== 0) {
+        onElHeightChange?.(elHeight);
+    }
 });
 </script>
 
@@ -157,7 +169,7 @@ $effect(() => {
     onclick={event => {
         if (!innerSelected || event.composedPath().includes(el)) return;
         innerSelected = false;
-        onSelectedChange(false);
+        onSelectedChange?.(false);
     }}
 />
 
@@ -165,10 +177,11 @@ $effect(() => {
     class:selected
     class:mounted
     class:constrain-max-width={constrainMaxWidth}
+    bind:offsetWidth={null, value => elWidth = el.offsetWidth}
     bind:offsetHeight={null, value => elHeight = el.offsetHeight}
     onclick={() => {
         innerSelected = true;
-        onSelectedChange(true);
+        onSelectedChange?.(true);
     }}
     onkeydown={(event: KeyboardEvent) => event.key === "Enter" && (innerSelected = true)}
     role="button"
@@ -305,26 +318,25 @@ task-card {
     border-radius: 0.5rem;
     box-shadow:
         0 0.0625rem 0.125rem oklch(0 0 0 / 0.1),
-        var(--selected-box-shadow);
+        0 0 0 0.0625rem var(--border-col) inset;
 
     &.mounted {
         transition:
-            height 0.35s cubic-bezier(.3,0,.1,1),
-            width 0.35s cubic-bezier(.3,0,.1,1),
-            box-shadow 0.35s cubic-bezier(.3,0,.1,1);
+            height 0.35s cubic-bezier(.4,0,0,1),
+            width 0.35s cubic-bezier(.4,0,0,1),
+            box-shadow 0.35s cubic-bezier(.4,0,0,1);
     }
 
     --content-width: auto;
     --content-height: auto;
     --border-col: oklch(0.9 0 0);
-    --selected-box-shadow: 0 0 0 0.0625rem var(--border-col) inset;
 
     &.selected {
         --border-col: oklch(0.8 0.2 30);
 
         box-shadow:
-            0 0.25rem 2rem oklch(0 0 0 / 0.25),
-            var(--selected-box-shadow);
+            0 0.25rem 2rem oklch(0.7 0.15 30),
+            0 0 0 0.125rem var(--border-col) inset;
 
         position: relative;
         z-index: 1;

@@ -40,7 +40,7 @@ priority-badge {
     --bg-col: oklch(0.925 0.05 calc(var(--value) * 40deg));
 
     border-radius: 0.5rem;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
 
     &.no-priority {
         --bg-col: oklch(0.9 0 0deg);

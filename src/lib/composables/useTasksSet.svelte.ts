@@ -1,6 +1,4 @@
 import type { Task } from "$api/client";
-import { type Edge, type Node } from "@xyflow/svelte";
-import { onDestroy, onMount, tick, untrack } from "svelte";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 import { useEvent } from "./useEvent.svelte";
 
@@ -83,25 +81,6 @@ export class ReactiveTask {
 
         return childIds.size > 0;
     });
-    elHeight: number = $state(0);
-
-    flowNode: Node<Record<string, any>> = $derived({
-        id: this.id.toString(),
-        type: "task",
-        position: this.pos,
-        data: this,
-    });
-    flowEdge: Edge | null = $derived.by(() => {
-        if (this.parentId === null) return null;
-        
-        return {
-            id: `e${this.parentId}-${this.id}`,
-            type: "ancestry",
-            source: this.parentId.toString(),
-            target: this.id.toString(),
-        };
-    });
-
 
     constructor(baseTask: Task, {
         tasks,
@@ -157,7 +136,7 @@ export class ReactiveTask {
 
 export const tasksContextKey = Symbol();
 
-export const useTasks = () => {
+export const useTasksSet = () => {
     const tasks = $state(new SvelteMap<number, ReactiveTask>());
     const parentsToChildIds = $state(new SvelteMap<number, SvelteSet<number>>());
 

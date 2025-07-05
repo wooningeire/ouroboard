@@ -1,21 +1,59 @@
 import Dagre, { graphlib } from "@dagrejs/dagre";
-import type { ReactiveTask, useTasks } from "./useTasks.svelte";
-import { SvelteSet } from "svelte/reactivity";
-import type { useTasksSorter } from "./useTasksSorter.svelte";
+import type { ReactiveTask, useTasksSet } from "./useTasksSet.svelte";
+import { SvelteMap } from "svelte/reactivity";
+import type { Edge, Node, NodeTypes } from "@xyflow/svelte";
 import { untrack } from "svelte";
+
+
+export class GraphTask {
+    task: ReactiveTask = $state()!;
+
+    readonly elDimensions = $state({
+        width: 0,
+        height: 0,
+    });
+
+    flowNode: Node<Record<string, any>> = $derived({
+        id: this.task.id.toString(),
+        type: "task",
+        position: this.task.pos,
+        data: this,
+    });
+    
+    flowEdge: Edge | null = $derived.by(() => {
+        if (this.task.parentId === null) return null;
+        
+        return {
+            id: `e${this.task.parentId}-${this.task.id}`,
+            type: "ancestry",
+            source: this.task.parentId.toString(),
+            target: this.task.id.toString(),
+        };
+    });
+
+    constructor(task: ReactiveTask) {
+        this.task = task;
+    }
+}
 
 export const useTasksGraphLayout = ({
     tasks,
-    tasksSorter,
     tasksSet,
 }: {
     tasks: Set<ReactiveTask>,
-    tasksSorter: ReturnType<typeof useTasksSorter>,
-    tasksSet: ReturnType<typeof useTasks>,
+    tasksSet: ReturnType<typeof useTasksSet>,
 }) => {
-    const nodeWidth = 600;
+    const graphTasks = $state(new SvelteMap<ReactiveTask, GraphTask>());
+
     const layoutGraph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
     layoutGraph.setGraph({ rankdir: "LR", align: "UL", nodesep: 5 });
+
+    // const maxWidth = $derived(Math.max(
+    //     ...graphTasks.values()
+    //         .map(graphTask => graphTask.elDimensions.width)
+    // ));
+
+    const width = 600;
 
     let updateRequested = false;
     const requestUpdateNodePositions = () => {
@@ -30,8 +68,8 @@ export const useTasksGraphLayout = ({
                 const {x, y} = layoutGraph.node(task.id.toString());
 
                 task.pos = {
-                    x: x - nodeWidth / 2,
-                    y: y - task.elHeight / 2,
+                    x: x - width / 2,
+                    y: y - (untrack(() => graphTasks).get(task)?.elDimensions.height ?? 0) / 2,
                 };
             }
             
@@ -51,8 +89,8 @@ export const useTasksGraphLayout = ({
 
     const addToGraph = (task: ReactiveTask) => {
         layoutGraph.setNode(task.id.toString(), {
-            width: nodeWidth,
-            height: task.elHeight,
+            width: width,
+            height: untrack(() => graphTasks).get(task)?.elDimensions.height ?? 0,
         });
 
         if (task.parentId !== null) {
@@ -71,16 +109,22 @@ export const useTasksGraphLayout = ({
         $effect(() => {
             if (visible) {
                 if ((lastId !== task.id || lastParentId !== task.parentId) && lastId !== undefined && lastParentId !== undefined) {
-                    removeFromGraph(lastId, lastParentId);
-                    addToGraph(task);
+                    removeFromGraph(lastId!, lastParentId!);
                 }
-
                 addToGraph(task);
 
+                if (!untrack(() => graphTasks).has(task)) {
+                    graphTasks.set(task, new GraphTask(task));
+                }
+                
             } else {
                 removeFromGraph(task.id, task.parentId);
-            }
 
+                if (untrack(() => graphTasks).has(task)) {
+                    graphTasks.delete(task);
+                }
+            }
+        
             lastId = task.id;
             lastParentId = task.parentId;
         });
@@ -88,18 +132,19 @@ export const useTasksGraphLayout = ({
 
     tasksSet.onDelTask(task => {
         removeFromGraph(task.id, task.parentId);
+        graphTasks.delete(task);
     });
     
         
     const flowNodes = $derived.by(() => {
-        return tasks.values()
-            .map(task => task.flowNode)
+        return graphTasks.values()
+            .map(graphTask => graphTask.flowNode)
             .toArray();
     });
 
     const flowEdges = $derived.by(() => {
-        return tasks.values()
-            .map(task => task.flowEdge)
+        return graphTasks.values()
+            .map(graphTask => graphTask.flowEdge)
             .filter(edge => edge !== null)
             .toArray();
     });

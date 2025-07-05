@@ -17,7 +17,7 @@ import {
 } from "@xyflow/svelte";
 import Button from '@/ui/button/button.svelte';
 import { api } from "$api/client";
-import {useTasks, tasksContextKey} from "$lib/composables/useTasks.svelte";
+import {useTasksSet, tasksContextKey} from "$lib/composables/useTasksSet.svelte";
     import { getContext, onMount, tick } from "svelte";
  
 const { id, sourceX, sourceY, targetX, targetY, target, selected }: EdgeProps = $props();
@@ -36,7 +36,7 @@ const newSourceCoords = {
 let sourceCoords = $state(lastPositions.get(id) ?? newSourceCoords);
 lastPositions.set(id, newSourceCoords);
 
-requestAnimationFrame(() => {
+setTimeout(() => {
     sourceCoords = newSourceCoords;
 });
 
@@ -50,7 +50,7 @@ const [edgePath, labelX, labelY] = $derived(
 );
 
 
-const tasksOps = getContext<ReturnType<typeof useTasks>>(tasksContextKey);
+const tasksOps = getContext<ReturnType<typeof useTasksSet>>(tasksContextKey);
 
 const clearParentId = async () => {
     const childId = Number(target);
