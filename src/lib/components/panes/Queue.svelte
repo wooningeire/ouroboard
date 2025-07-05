@@ -11,6 +11,7 @@ import { ReactiveTask, tasksContextKey, useTasks } from "$lib/composables/useTas
     import { getContext } from "svelte";
     import { SvelteMap, SvelteSet } from "svelte/reactivity";
     import { flip } from "svelte/animate";
+    import { useTasksSorter } from "$lib/composables/useTasksSorter.svelte";
 
 
 let showDone = $state(false);
@@ -24,32 +25,13 @@ const tasksByPriority = $state(new SvelteMap<number | null, Set<ReactiveTask>>(
     priorities.map(priority => [priority, new SvelteSet()])
 ));
 
+const selectedTasks = $state(new SvelteSet<ReactiveTask>());
 
-const listenToTaskPriority = (task: ReactiveTask) => {
-    let lastPriority: number | null | undefined = undefined;
-    $effect(() => {
-        const passesFilters = (showDone || !task.done) && (showParents || !task.isParent)
-        if (!task.visible || !passesFilters) {
-            tasksByPriority.get(task.priority)?.delete(task);
-            return;
-        }
-
-        if (lastPriority !== undefined && lastPriority !== task.priority) {
-            tasksByPriority.get(lastPriority)?.delete(task);
-        }
-
-        tasksByPriority.get(task.priority)?.add(task);
-
-        lastPriority = task.priority;
-    });
-};
-
-tasksSet.taskEffect(listenToTaskPriority);
-tasksSet.onDelTask(task => {
-    tasksByPriority.get(task.priority)?.delete(task);
+useTasksSorter({
+    tasksSet,
+    filterTask: task => ((showDone || !task.done) && (showParents || !task.isParent)) || selectedTasks.has(task),
+    mapTaskToBucket: task => tasksByPriority.get(task.priority) ?? null,
 });
-
-
 </script>
 
 <queue-page>
@@ -86,6 +68,13 @@ tasksSet.onDelTask(task => {
                             <TaskCard
                                 {task}
                                 constrainMaxWidth
+                                onSelectedChange={selected => {
+                                    if (selected) {
+                                        selectedTasks.add(task);
+                                    } else {
+                                        selectedTasks.delete(task);
+                                    }
+                                }}
                             />
                         </task-card-animator>
                     {/each}

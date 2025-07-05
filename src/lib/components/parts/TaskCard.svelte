@@ -10,25 +10,27 @@ import {type ReactiveTask} from "$lib/composables/useTasks.svelte";
 
 import collapsedNodeSvg from "$lib/assets/collapsed-node.svg";
 import uncollapsedNodeSvg from "$lib/assets/uncollapsed-node.svg";
-    import { onMount } from "svelte";
-    import { fade, fly, type TransitionConfig } from "svelte/transition";
-    import { cubicInOut, cubicOut } from "svelte/easing";
+import { onDestroy, onMount } from "svelte";
+import { fade, fly, type TransitionConfig } from "svelte/transition";
+import { cubicInOut, cubicOut } from "svelte/easing";
 
 const {
     task,
-    alwaysSelected = false,
+    forceSelected = false,
     showChildToggle = false,
     constrainMaxWidth = false,
+    onSelectedChange = () => {},
 }: {
     task: ReactiveTask,
-    alwaysSelected?: boolean,
+    forceSelected?: boolean,
     showChildToggle?: boolean,
     constrainMaxWidth?: boolean,
+    onSelectedChange?: (selected: boolean) => void,
 } = $props();
 
 
 let innerSelected = $state(false);
-const selected = $derived(alwaysSelected || innerSelected);
+const selected = $derived(forceSelected || innerSelected);
 
 const expanded = $derived(task.alwaysExpanded || selected);
 
@@ -132,7 +134,7 @@ $effect(() => {
 
     setTimeout(() => {
         recentlySelected = false;
-    });
+    }, 350);
 });
 
 let transitioning = $state(false);
@@ -155,6 +157,7 @@ $effect(() => {
     onclick={event => {
         if (!innerSelected || event.composedPath().includes(el)) return;
         innerSelected = false;
+        onSelectedChange(false);
     }}
 />
 
@@ -163,7 +166,10 @@ $effect(() => {
     class:mounted
     class:constrain-max-width={constrainMaxWidth}
     bind:offsetHeight={null, value => elHeight = el.offsetHeight}
-    onclick={() => innerSelected = true}
+    onclick={() => {
+        innerSelected = true;
+        onSelectedChange(true);
+    }}
     onkeydown={(event: KeyboardEvent) => event.key === "Enter" && (innerSelected = true)}
     role="button"
     tabindex="0"

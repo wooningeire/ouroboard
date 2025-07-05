@@ -1,13 +1,16 @@
 <script lang="ts">
 import { Background, MiniMap, SvelteFlow, useSvelteFlow } from "@xyflow/svelte";
 import "@xyflow/svelte/dist/style.css";
-import type { OnConnectStart, OnConnectEnd, OnConnect, OnDelete, Connection, Node, Edge } from "@xyflow/svelte";
+import type { OnConnectStart, OnConnectEnd, OnConnect, OnDelete, Connection, Node, Edge, OnSelectionChange } from "@xyflow/svelte";
 import TaskNode from "@/parts/TaskNode.svelte";
 import { api } from "$api/client";
-import {useTasks, tasksContextKey} from "$lib/composables/useTasks.svelte";
+import {useTasks, tasksContextKey, ReactiveTask} from "$lib/composables/useTasks.svelte";
 import { getContext, onMount, tick } from "svelte";
 import * as DropdownMenu from "@/ui/dropdown-menu";
 import AncestryEdge from "@/parts/AncestryEdge.svelte";
+    import { useTasksSorter } from "$lib/composables/useTasksSorter.svelte";
+    import { SvelteSet } from "svelte/reactivity";
+    import { useTasksGraphLayout as useTasksGraph } from "$lib/composables/useTasksGraphLayout.svelte";
 
 const {
     tasksPromise,
@@ -21,12 +24,12 @@ let contextMenuOpen = $state(false);
 let contextMenuPosition = $state({ x: 0, y: 0 });
 
 
-const tasksOps = getContext<ReturnType<typeof useTasks>>(tasksContextKey);
+const tasksSet = getContext<ReturnType<typeof useTasks>>(tasksContextKey);
 
 
 
 const createNewTask = async (parentNodeId: number | null=null) => {
-    const placeholderTask = tasksOps.addTask({
+    const placeholderTask = tasksSet.addTask({
         id: -1,
         created_at: new Date(),
         title: "",
@@ -112,11 +115,11 @@ const onConnect: OnConnect = async (connection: Connection) => {
     // Verify that no circular hierarchy occurs
     let current: number | null = parentId;
     while (current !== null) {
-        current = tasksOps.getTask(current)?.parentId ?? null;
+        current = tasksSet.getTask(current)?.parentId ?? null;
         if (current === childId) return;
     }
 
-    const task = tasksOps.getTask(childId);
+    const task = tasksSet.getTask(childId);
     if (task !== undefined) {
         task.parentId = parentId;
     }
@@ -138,10 +141,12 @@ const onConnect: OnConnect = async (connection: Connection) => {
 // };
 
 const onDelete: OnDelete = async ({ nodes: deletedNodes }) => {
+    console.log(deletedNodes);
     for (const node of deletedNodes) {
-        const task = tasksOps.getTask(Number(node.id));
+        const task = tasksSet.getTask(Number(node.id));
+        console.log(task);
         if (task === undefined) continue;
-        tasksOps.delTask(task);
+        tasksSet.delTask(task);
     }
 
     await api.task.trash({
@@ -149,6 +154,13 @@ const onDelete: OnDelete = async ({ nodes: deletedNodes }) => {
     });
 };
 
+const onSelectionChange: OnSelectionChange = ({nodes, edges}) => {
+    selectedTasks = new Set(
+        nodes.values()
+            .map(node => tasksSet.getTask(Number(node.id)))
+            .filter(task => task !== undefined)
+    );
+};
 
 
 
@@ -160,7 +172,20 @@ onMount(async () => {
 
 
 let showDone = $state(false);
-tasksOps.addTaskFilter(task => showDone || !task.done);
+
+let selectedTasks = $state.raw(new Set<ReactiveTask>());
+const visibleTasks = $state(new SvelteSet<ReactiveTask>());
+const tasksSorter = useTasksSorter({
+    tasksSet,
+    filterTask: task => showDone || !task.done || selectedTasks.has(task),
+    mapTaskToBucket: task => visibleTasks,
+});
+
+const tasksGraph = useTasksGraph({
+    tasks: visibleTasks,
+    tasksSorter,
+    tasksSet,
+});
 </script>
 
 
@@ -175,8 +200,8 @@ tasksOps.addTaskFilter(task => showDone || !task.done);
 </options-rack>
 
 <SvelteFlow
-    nodes={tasksOps.flowNodes}
-    edges={tasksOps.flowEdges}
+    nodes={tasksGraph.flowNodes}
+    edges={tasksGraph.flowEdges}
     fitView
     nodesDraggable={false}
     onconnectstart={onConnectStart}
@@ -185,6 +210,7 @@ tasksOps.addTaskFilter(task => showDone || !task.done);
     ondelete={onDelete}
     onpanecontextmenu={onPaneContextMenu}
     onpaneclick={onPaneClick}
+    onselectionchange={onSelectionChange}
     deleteKey={["Backspace", "Delete"]}
     nodeTypes={{
         task: TaskNode,

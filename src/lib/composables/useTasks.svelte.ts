@@ -1,5 +1,4 @@
 import type { Task } from "$api/client";
-import Dagre, { graphlib } from "@dagrejs/dagre";
 import { type Edge, type Node } from "@xyflow/svelte";
 import { onDestroy, onMount, tick, untrack } from "svelte";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
@@ -9,7 +8,6 @@ import { useEvent } from "./useEvent.svelte";
 export class ReactiveTask {
     #tasks: Map<number, ReactiveTask>;
     #parentsToChildIds: Map<number, Set<number>>;
-    #taskFilter: (task: ReactiveTask) => boolean;
 
     id: number = $state(0);
     title: string = $state("");
@@ -59,10 +57,6 @@ export class ReactiveTask {
     done: boolean = $derived(this.hrCompletedTotal > 0 && this.hrRemainingTotal === 0);
 
     visible: boolean = $derived.by(() => {
-        if (!this.#taskFilter(this)) {
-            return false;
-        }
-
         if (this.clear || this.trashed) {
             return false;
         }
@@ -112,25 +106,16 @@ export class ReactiveTask {
     constructor(baseTask: Task, {
         tasks,
         parentsToChildIds,
-        taskFilter,
-        layoutGraph,
-        nodeWidth,
-        updateNodePositions,
         unlinkFromParent,
-        visibleTasks,
+        linkToParent,
     }: {
         tasks: Map<number, ReactiveTask>,
         parentsToChildIds: Map<number, Set<number>>,
-        taskFilter: (task: ReactiveTask) => boolean,
-        layoutGraph: graphlib.Graph,
-        nodeWidth: number,
-        updateNodePositions: () => void,
         unlinkFromParent: (childId: number, parentId: number | null) => void,
-        visibleTasks: Set<ReactiveTask>,
+        linkToParent: (childId: number, parentId: number | null) => void,
     }) {
         this.#tasks = tasks;
         this.#parentsToChildIds = parentsToChildIds;
-        this.#taskFilter = taskFilter,
 
         this.id = baseTask.id;
         this.title = baseTask.title;
@@ -148,45 +133,21 @@ export class ReactiveTask {
             let lastId: number | undefined = undefined;
             let lastParentId: number | null | undefined = undefined;
             $effect(() => {
-                if (lastId !== undefined && lastId !== this.id) {
-                    layoutGraph.removeNode(lastId.toString());
+                if (lastId === this.id && lastParentId === this.parentId) return;
+
+                if (lastId !== undefined) {
+                    tasks.delete(lastId);
                 }
 
-                if (lastParentId !== undefined && lastId !== undefined && (lastId !== this.id || lastParentId !== this.parentId)) {
+                if (lastParentId !== undefined && lastId !== undefined) {
                     unlinkFromParent(lastId, lastParentId);
                 }
 
+                tasks.set(this.id, this);
+                linkToParent(this.id, this.parentId);
+
                 lastId = this.id;
                 lastParentId = this.parentId;
-            });
-
-            $effect(() => {
-                if (this.visible) {
-                    layoutGraph.setNode(this.id.toString(), {
-                        width: nodeWidth,
-                        height: this.elHeight,
-                    });
-
-                    if (this.parentId !== null) {
-                        layoutGraph.setEdge(this.parentId.toString(), this.id.toString());
-                    }
-
-                    untrack(() => {
-                        visibleTasks.add(this);
-                    });
-                } else {
-                    layoutGraph.removeNode(this.id.toString());
-
-                    if (this.parentId !== null) {
-                        layoutGraph.removeEdge(this.parentId.toString(), this.id.toString());
-                    }
-
-                    untrack(() => {
-                        visibleTasks.delete(this);
-                    });
-                }
-
-                updateNodePositions();
             });
 
             return () => {};
@@ -200,42 +161,6 @@ export const useTasks = () => {
     const tasks = $state(new SvelteMap<number, ReactiveTask>());
     const parentsToChildIds = $state(new SvelteMap<number, SvelteSet<number>>());
 
-    const visibleTasks = $state(new SvelteSet<ReactiveTask>());
-
-    $effect(() => {
-        void visibleTasks;
-
-        updateNodePositions();
-    });
-
-
-    const nodeWidth = 600;
-    const layoutGraph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-    layoutGraph.setGraph({ rankdir: "LR", align: "UL", nodesep: 5 });
-
-
-    let relayoutQueued = false;
-    const updateNodePositions = () => {
-        if (relayoutQueued) return;
-
-        relayoutQueued = true;
-
-        requestAnimationFrame(() => {
-            Dagre.layout(layoutGraph, {disableOptimalOrderHeuristic: true});
-
-            for (const task of visibleTasks) {
-                const {x, y} = layoutGraph.node(task.id.toString());
-
-                task.pos = {
-                    x: x - nodeWidth / 2,
-                    y: y - task.elHeight / 2,
-                };
-            }
-
-            relayoutQueued = false;
-        });
-    };
-
 
     const unlinkFromParent = (childId: number, parentId: number | null) => {
         if (parentId === null) return;
@@ -244,8 +169,6 @@ export const useTasks = () => {
         if (childIds !== undefined) {
             childIds.delete(childId);
         }
-
-        layoutGraph.removeEdge(parentId.toString(), childId.toString());
     };
 
     const linkToParent = (childId: number, parentId: number | null) => {
@@ -257,49 +180,19 @@ export const useTasks = () => {
         } else {
             parentsToChildIds.set(parentId, new SvelteSet([childId]));
         }
-
-        layoutGraph.setEdge(parentId.toString(), childId.toString());
     };
-
-    const flowNodes = $derived.by(() => {
-        return visibleTasks.values()
-            .map(task => task.flowNode)
-            .toArray();
-    });
-
-    const flowEdges = $derived.by(() => {
-        return visibleTasks.values()
-            .map(task => task.flowEdge)
-            .filter(edge => edge !== null)
-            .toArray();
-    });
-
     
 
     const addTaskEvent = useEvent<[ReactiveTask]>(); 
     const delTaskEvent = useEvent<[ReactiveTask]>();
-
-    const taskFilters = $state(new SvelteSet<(task: ReactiveTask) => boolean>());
-    const checkTaskFilter = (task: ReactiveTask) => {
-        for (const filter of taskFilters) {
-            if (!filter(task)) {
-                return false;
-            }
-        }
-        return true;
-    };
 
     return {
         addTask: (baseTask: Task) => {
             const task = new ReactiveTask(baseTask, {
                 tasks,
                 parentsToChildIds,
-                taskFilter: checkTaskFilter,
-                layoutGraph,
-                nodeWidth,
-                updateNodePositions,
                 unlinkFromParent,
-                visibleTasks,
+                linkToParent,
             });
             tasks.set(task.id, task);
             linkToParent(task.id, task.parentId);
@@ -315,19 +208,8 @@ export const useTasks = () => {
             unlinkFromParent(task.id, task.parentId);
             tasks.delete(task.id);
             parentsToChildIds.delete(task.id);
-            layoutGraph.removeNode(task.id.toString());
-            visibleTasks.delete(task);
 
             delTaskEvent.emit(task);
-
-            updateNodePositions();
-        },
-
-        get flowNodes() {
-            return flowNodes;
-        },
-        get flowEdges() {
-            return flowEdges;
         },
 
         onAddTask: (handler: (task: ReactiveTask) => void) => {
@@ -345,22 +227,10 @@ export const useTasks = () => {
 
             addTaskEvent.on(task => {
                 $effect.root(() => {
-                    $effect(() => {
-                        handler(task);
-                    });
+                    handler(task);
 
                     return () => {};
                 });
-            });
-        },
-
-        addTaskFilter: (filter: (task: ReactiveTask) => boolean) => {
-            onMount(() => {
-                taskFilters.add(filter);
-            });
-
-            onDestroy(() => {
-                taskFilters.delete(filter);
             });
         },
 
