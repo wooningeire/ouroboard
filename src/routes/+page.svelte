@@ -130,9 +130,9 @@ loading-overlay {
     display: grid;
     place-items: center;
     position: relative;
-    display: flex;
 
-    font-size: 2rem;
+    font-size: 3rem;
+    font-family: var(--font-strong);
 
     color: oklch(1 0 0);
     background: oklch(0.3 0.15 210 / 0.85);

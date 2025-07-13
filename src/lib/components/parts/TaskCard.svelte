@@ -130,6 +130,14 @@ const slideOut = (node: HTMLElement): TransitionConfig => {
     };
 };
 
+const grow = (node: HTMLElement): TransitionConfig => {
+    return {
+        duration: 250,
+        easing: cubicOut,
+        css: t => `transform: scale(${t}); opacity: ${t};`,
+    };
+};
+
 
 let recentlySelected = $state(false);
 $effect(() => {
@@ -137,10 +145,6 @@ $effect(() => {
         recentlySelected = true;
         return;
     }
-
-    setTimeout(() => {
-        recentlySelected = false;
-    }, 150);
 });
 
 let transitioning = $state(false);
@@ -201,8 +205,14 @@ $effect(() => {
     bind:this={el}
     style:--content-height={mounted ? `${contentHeight}px` : "auto"}
     style:--content-width={mounted ? `${contentWidth}px` : "auto"}
-    ontransitionstart={() => transitioning = true}
+    ontransitionstart={() => {
+        transitioning = true;
+        if (!selected) {
+            recentlySelected = false;
+        }
+    }}
     ontransitionend={() => transitioning = false}
+    transition:grow
 >
     {#key expanded}
         <task-card-scroller>

@@ -133,7 +133,7 @@ div.svelte-flow__node-group {
 
 g.svelte-flow__edge.selectable:hover .svelte-flow__edge-path,
 g.svelte-flow__edge.selectable.selected .svelte-flow__edge-path {
-    stroke: var(--xy-theme-edge-hover);
+    stroke: oklch(0.5 0.1 220);
 }
 
 path.svelte-flow__edge-path,

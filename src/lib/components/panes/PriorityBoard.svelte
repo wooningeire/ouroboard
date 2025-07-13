@@ -26,6 +26,17 @@ const tasksByPriority = $state(new SvelteMap<number | null, Set<ReactiveTask>>(
     priorities.map(priority => [priority, new SvelteSet()])
 ));
 
+const setWidths = $state(new SvelteMap<number | null, number | null>(
+    priorities.map(priority => [priority, null])
+));
+
+const prioritySetWidth = (priority: number | null) => {
+    const width = setWidths.get(priority);
+    if (width === null || width === undefined) return "auto";
+    
+    return `${width}px`;
+}
+
 const selectedTasks = $state(new SvelteSet<ReactiveTask>());
 
 useTasksSorter({
@@ -56,32 +67,39 @@ useTasksSorter({
 
     <task-priorities>
         {#each tasksByPriority as [priority, tasks], i (priority)}
-            <task-priority-set class:empty={tasks.size === 0}>
-                <Priority value={priority} />
+            <task-priority-set
+                class:empty={tasks.size === 0}
+                style:--content-width={prioritySetWidth(priority)}
+            >
+                <task-priority-set-content
+                    bind:offsetWidth={null, value => setWidths.set(priority, value!)}
+                >
+                    <Priority value={priority} />
 
-                <task-list>
-                    {#each tasks as task (task.id)}
-                        <task-card-animator
-                            in:receive={{key: task.id}}
-                            out:send={{key: task.id}}
-                            animate:flip={{duration: 250, easing: cubicInOut}}
-                        >
-                            <TaskCard
-                                {task}
-                                constrainMaxWidth
-                                displayAncestorTitles
-                                showChildToggle={showParents}
-                                onSelectedChange={selected => {
-                                    if (selected) {
-                                        selectedTasks.add(task);
-                                    } else {
-                                        selectedTasks.delete(task);
-                                    }
-                                }}
-                            />
-                        </task-card-animator>
-                    {/each}
-                </task-list>
+                    <task-list>
+                        {#each tasks as task (task.id)}
+                            <task-card-animator
+                                in:receive={{key: task.id}}
+                                out:send={{key: task.id}}
+                                animate:flip={{duration: 250, easing: cubicInOut}}
+                            >
+                                <TaskCard
+                                    {task}
+                                    constrainMaxWidth
+                                    displayAncestorTitles
+                                    showChildToggle={showParents}
+                                    onSelectedChange={selected => {
+                                        if (selected) {
+                                            selectedTasks.add(task);
+                                        } else {
+                                            selectedTasks.delete(task);
+                                        }
+                                    }}
+                                />
+                            </task-card-animator>
+                        {/each}
+                    </task-list>
+                </task-priority-set-content>
             </task-priority-set>
 
             {#if i < tasksByPriority.size - 1}
@@ -120,29 +138,50 @@ task-priorities {
 
 task-priority-set {
     flex-grow: 1;
+
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-
     width: 20rem;
     padding: 0 0.5rem;
 
     border-radius: 0.5rem;
 
+    transition:
+        opacity 0.375s cubic-bezier(0.5,0,0,1),
+        width 0.375s cubic-bezier(0.5,0,0,1);
+
+    --content-width: auto;
     &.empty {
         flex-grow: 0;
-        width: unset;
+        width: calc(var(--content-width) + 1rem);
 
         opacity: 0.3333333;
+
+        task-priority-set-content {
+            width: max-content;
+        }
     }
+}
+
+task-priority-set-content {
+    height: 0;
+    flex-grow: 1;
+
+    display: flex;
+    flex-direction: column;
+    align-items: start;
 }
 
 task-list {
     display: flex;
     gap: 0.5rem;
     flex-direction: column;
+    width: 100%;
     flex-grow: 1;
     overflow-y: auto;
+    padding-top: 0.5rem;
+    
+    mask: linear-gradient(#0000, #000 0.5rem);
 }
 
 task-priority-divider {

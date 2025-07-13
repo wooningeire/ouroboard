@@ -35,8 +35,6 @@ const createNewTask = async (parentNodeId: number | null=null) => {
         created_at: new Date(),
         title: "",
         desc: null,
-        target_start: null,
-        target_end: null,
         hard_end: null,
         priority: null,
         clear: false,

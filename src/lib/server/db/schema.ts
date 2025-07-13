@@ -5,8 +5,6 @@ export const taskTable = pgTable("task", {
 	created_at: timestamp({withTimezone: true}).notNull().defaultNow(),
 	title: varchar({length: 256}).notNull().default(""),
 	desc: varchar({length: 4096}),
-	target_start: timestamp({withTimezone: true}),
-	target_end: timestamp({withTimezone: true}),
 	hard_end: timestamp({withTimezone: true}),
 	priority: integer(),
 	parent_id: integer(),
@@ -28,7 +26,22 @@ export const taskHoursTable = pgTable("task_hours", {
 	created_at: timestamp({withTimezone: true}).notNull().defaultNow(),
 	hr_remaining: real().notNull(),
 	hr_completed: real().notNull().default(0),
-	task_id: integer().notNull().references(() => taskTable.id),
+	task_id: integer().notNull(),
+}, table => [
+	foreignKey({
+		columns: [table.task_id],
+		foreignColumns: [taskTable.id],
+		name: "task",
+	})
+		.onDelete("cascade"),
+]);
+
+export const taskTimeAllocationTable = pgTable("task_time_allocation", {
+	id: serial().notNull().primaryKey(),
+	task_id: integer().notNull(),
+	target_start: timestamp({withTimezone: true}),
+	target_end: timestamp({withTimezone: true}),
+	target_n_hours_spent: integer().notNull(),
 }, table => [
 	foreignKey({
 		columns: [table.task_id],
