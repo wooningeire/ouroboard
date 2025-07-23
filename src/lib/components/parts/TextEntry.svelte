@@ -1,4 +1,6 @@
 <script lang="ts">
+import {TextInput} from "@vaie/hui";
+
 let {
     value,
     onValueChange,
@@ -12,102 +14,35 @@ let {
     validate?: (value: string) => boolean,
     disabled?: boolean,
 } = $props();
-
-
-let localValue = $state(value);
-const valid = $derived(validate(localValue));
-
-$effect(() => {
-    localValue = value;
-});
-
-
-let focused = $state(false);
-const handleFocus = () => {
-    focused = true;
-};
-
-const handleBlur = () => {
-    focused = false;
-
-    if (localValue === value) return;
-
-    if (!valid) {
-        localValue = value;
-        return;
-    }
-
-    onValueChange(localValue);
-};
-
-let el: HTMLUnknownElement;
-const handleKeydown = (event: KeyboardEvent) => {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        el.blur();
-    }
-};
-
-let placeholderEl = $state<HTMLUnknownElement>();
-
-const showsPlaceholder = $derived(placeholder !== null && localValue.length === 0);
-const placeholderWidth = $derived.by(() => {
-    void showsPlaceholder;
-    return placeholderEl?.offsetWidth ?? 0;
-});
 </script>
 
-<text-entry-container
-    class:invalid={!valid}
-    class:disabled
-    class:shows-placeholder={showsPlaceholder}
+<TextInput
+    {value}
+    {onValueChange}
+    placeholderText={placeholder ?? ""}
+    {validate}
+    {disabled}
 >
-    {#if showsPlaceholder}
-        <text-entry-placeholder bind:this={placeholderEl}>{placeholder}</text-entry-placeholder>
-    {/if}
-
-    <text-entry
-        bind:this={el}
-        contenteditable
-        role="textbox"
-        tabindex="0"
-        onfocus={handleFocus}
-        onblur={handleBlur}
-        onkeydown={handleKeydown}
-        bind:textContent={localValue}
-        {disabled}
-        onclick={(event: PointerEvent) => {
-            if (!focused) return;
-            event.preventDefault();
-            event.stopPropagation();
-        }}
-        style:--placeholder-width="{placeholderWidth}px"
-    ></text-entry>
-</text-entry-container>
+    {#snippet input({localText, onLocalTextChange, el, onElChange, elProps, valid})}
+        <text-entry
+            bind:this={() => el, onElChange}
+            bind:textContent={() => localText, onLocalTextChange}
+            {...elProps}
+            contenteditable
+            class:invalid={!valid}
+        ></text-entry>
+    {/snippet}
+</TextInput>
 
 
 <style lang="scss">
-text-entry-container {
+text-entry {
+    display: block;
+    grid-area: 1/1;
+
     &.invalid {
         outline: 1px solid oklch(62.828% 0.20996 13.579);
         outline-offset: 0.5rem;
     }
-
-    &.shows-placeholder {
-        text-entry {
-            min-width: var(--placeholder-width);
-        }
-    }
-}
-
-text-entry {
-    display: block;
-}
-
-text-entry-placeholder {
-    opacity: 0.3333333;
-    position: absolute;
-    pointer-events: none;
-    user-select: none;
 }
 </style>

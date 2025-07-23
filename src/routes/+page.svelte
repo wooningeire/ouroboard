@@ -47,6 +47,8 @@ onMount(async () => {
 
         {#await tasksPromise}
             <loading-overlay>Loading items</loading-overlay>
+        {:catch}
+            <loading-overlay>Failed to load tasks</loading-overlay>
         {/await}
     </panes-grid>
 </main>
@@ -135,6 +137,11 @@ loading-overlay {
     font-family: var(--font-strong);
 
     color: oklch(1 0 0);
-    background: oklch(0.3 0.15 210 / 0.85);
+    background: linear-gradient(
+        0.25turn in oklch,
+        oklch(0.3 0.08 190 / 0.85),
+        oklch(0.3 0.08 270 / 0.85)
+    );
+    box-shadow: 0 0 8rem oklch(1 0 0 / 0.75) inset;
 }
 </style>
