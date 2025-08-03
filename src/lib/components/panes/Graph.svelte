@@ -4,7 +4,7 @@ import "@xyflow/svelte/dist/style.css";
 import type { OnConnectStart, OnConnectEnd, OnConnect, OnDelete, Connection, Node, Edge, OnSelectionChange } from "@xyflow/svelte";
 import TaskNode from "@/parts/TaskNode.svelte";
 import { api } from "$api/client";
-import {useTasksSet, tasksContextKey} from "$lib/composables/useTasksSet.svelte";
+import { TasksSet} from "$lib/composables/TasksSet.svelte";
 import { getContext, onMount, tick } from "svelte";
 import * as DropdownMenu from "@/ui/dropdown-menu";
 import AncestryEdge from "@/parts/AncestryEdge.svelte";
@@ -13,6 +13,7 @@ import AncestryEdge from "@/parts/AncestryEdge.svelte";
     import { useTasksGraphLayout  } from "$lib/composables/useTasksGraphLayout.svelte";
     import PaneLabel from "@/parts/PaneLabel.svelte";
     import type { Task } from "$lib/composables/Task.svelte";
+    import { TASKS_CONTEXT_KEY } from "../../../routes/+page.svelte";
 
 const {
     tasksPromise,
@@ -26,7 +27,7 @@ let contextMenuOpen = $state(false);
 let contextMenuPosition = $state({ x: 0, y: 0 });
 
 
-const tasksSet = getContext<ReturnType<typeof useTasksSet>>(tasksContextKey);
+const tasksSet = getContext<TasksSet>(TASKS_CONTEXT_KEY);
 
 
 

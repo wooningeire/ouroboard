@@ -1,5 +1,5 @@
 import Dagre, { graphlib } from "@dagrejs/dagre";
-import type { useTasksSet } from "./useTasksSet.svelte";
+import type { TasksSet } from "./TasksSet.svelte";
 import { SvelteMap } from "svelte/reactivity";
 import type { Edge, Node, NodeTypes } from "@xyflow/svelte";
 import { untrack } from "svelte";
@@ -42,7 +42,7 @@ export const useTasksGraphLayout = ({
     tasksSet,
 }: {
     tasks: Set<Task>,
-    tasksSet: ReturnType<typeof useTasksSet>,
+    tasksSet: TasksSet,
 }) => {
     const graphTasks = $state(new SvelteMap<Task, GraphTask>());
 
@@ -140,7 +140,7 @@ export const useTasksGraphLayout = ({
         });
     });
 
-    tasksSet.onDelTask(task => {
+    tasksSet.onDel(task => {
         removeFromGraph(task.id, task.parentId);
         graphTasks.delete(task);
     });

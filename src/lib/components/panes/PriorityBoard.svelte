@@ -5,7 +5,7 @@ const [send, receive] = crossfade({easing: cubicInOut});
 </script>
 
 <script lang="ts">
-import { tasksContextKey, useTasksSet } from "$lib/composables/useTasksSet.svelte";
+import { TasksSet } from "$lib/composables/TasksSet.svelte";
 import Priority from "@/parts/Priority.svelte";
 import TaskCard from "@/parts/TaskCard.svelte";
 import { getContext } from "svelte";
@@ -14,12 +14,13 @@ import { flip } from "svelte/animate";
 import { useTasksSorter } from "$lib/composables/useTasksSorter.svelte";
 import PaneLabel from "@/parts/PaneLabel.svelte";
 import type { Task } from "$lib/composables/Task.svelte";
+import { TASKS_CONTEXT_KEY } from "../../../routes/+page.svelte";
 
 
 let showDone = $state(false);
 let showParents = $state(false);
 
-const tasksSet = getContext<ReturnType<typeof useTasksSet>>(tasksContextKey);
+const tasksSet = getContext<TasksSet>(TASKS_CONTEXT_KEY);
 
 const priorities = [null, 0, 1, 2, 3, 4, 5];
 

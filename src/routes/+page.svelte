@@ -1,17 +1,21 @@
+<script lang="ts" module>
+export const TASKS_CONTEXT_KEY = Symbol();
+</script>
+
 <script lang="ts">
 import { SvelteFlowProvider } from "@xyflow/svelte";
 import Graph from "@/panes/Graph.svelte";
 import { api } from "$api/client";
 import PriorityBoard from "@/panes/PriorityBoard.svelte";
-import {useTasksSet, tasksContextKey} from "$lib/composables/useTasksSet.svelte";
+import {TasksSet} from "$lib/composables/TasksSet.svelte";
     import { onMount, setContext } from "svelte";
     import Queue from "@/panes/Queue.svelte";
     import BgOverlay from "@/parts/BgOverlay.svelte";
     import Button from "@/ui/button/button.svelte";
 
 
-const tasksSet = useTasksSet();
-setContext(tasksContextKey, tasksSet);
+const tasksSet = new TasksSet();
+setContext(TASKS_CONTEXT_KEY, tasksSet);
 
 
 let tasksPromise = $state(api.task.list({}));

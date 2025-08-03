@@ -1,5 +1,5 @@
-import { SvelteSet } from "svelte/reactivity";
-import type { Task, useTasksSet } from "./useTasksSet.svelte"
+import {type Task} from "./Task.svelte";
+import {TasksSet} from "./TasksSet.svelte"
 import { useEvent } from "./useEvent.svelte";
 
 export const useTasksSorter = ({
@@ -7,7 +7,7 @@ export const useTasksSorter = ({
     filterTask,
     mapTaskToBucket,
 }: {
-    tasksSet: ReturnType<typeof useTasksSet>,
+    tasksSet: TasksSet,
     filterTask: (task: Task) => boolean,
     mapTaskToBucket: (task: Task) => Set<Task> | null,
 }) => {
@@ -41,7 +41,7 @@ export const useTasksSorter = ({
         });
     });
 
-    tasksSet.onDelTask(task => {
+    tasksSet.onDel(task => {
         const oldBucket = oldBuckets.get(task) ?? null;
         oldBucket?.delete(task);
 
