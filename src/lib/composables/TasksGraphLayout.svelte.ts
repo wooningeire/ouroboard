@@ -3,6 +3,7 @@ import type { TasksSet } from "./TasksSet.svelte";
 import { SvelteMap } from "svelte/reactivity";
 import type { Task } from "./Task.svelte";
 import { GraphTask } from "./GraphTask.svelte";
+import { untrack } from "svelte";
 
 
 
@@ -25,8 +26,10 @@ export class TasksGraphLayout {
     });
 
     constructor ({
+        filterTask,
         tasksSet,
     }: {
+        filterTask: (task: Task) => boolean,
         tasksSet: TasksSet,
     }) {
         const width = 600;
@@ -36,8 +39,6 @@ export class TasksGraphLayout {
                 layoutGraph.setGraph({ rankdir: "LR", align: "UL", nodesep: 5 });
 
                 for (const [task, graphTask] of this.#graphTasks.entries()) {
-                    if (!task.visible) continue;
-
                     layoutGraph.setNode(task.id.toString(), {
                         width: width,
                         height: graphTask.elDimensions.height,
@@ -51,8 +52,6 @@ export class TasksGraphLayout {
                 Dagre.layout(layoutGraph, {disableOptimalOrderHeuristic: true});
 
                 for (const [task, graphTask] of this.#graphTasks.entries()) {
-                    if (!task.visible) continue;
-                    
                     const {x, y} = layoutGraph.node(task.id.toString())!;
 
                     task.pos = {
@@ -64,7 +63,13 @@ export class TasksGraphLayout {
         });
 
         tasksSet.taskEffect(task => {
-            this.#graphTasks.set(task, new GraphTask(task));
+            $effect(() => {
+                if (task.visible && filterTask(task)) {
+                    untrack(() => this.#graphTasks.set(task, new GraphTask(task)));
+                } else {
+                    untrack(() => this.#graphTasks.delete(task));
+                }
+            });
         });
 
         tasksSet.onDel(task => {

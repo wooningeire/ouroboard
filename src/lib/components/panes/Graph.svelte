@@ -180,7 +180,10 @@ useTasksSorter({
     mapTaskToBucket: task => visibleTasks,
 });
 
-const tasksGraph = new TasksGraphLayout({tasksSet});
+const tasksGraph = new TasksGraphLayout({
+    tasksSet,
+    filterTask: task => visibleTasks.has(task),
+});
 </script>
 
 
