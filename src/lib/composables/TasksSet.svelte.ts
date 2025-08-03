@@ -6,7 +6,7 @@ import { EventMap } from "./EventMap.svelte";
 
 export class TasksSet {
     readonly #tasks = new EventMap<number, Task>();
-    readonly #parentsToChildIds = new EventMap<number, SvelteSet<number>>();
+    readonly #parentsToChildIds = new Map<number, SvelteSet<number>>();
 
     onAdd(fn: (task: Task) => void) {
         this.#tasks.onAdd((_, task) => fn(task));
@@ -39,7 +39,7 @@ export class TasksSet {
     addTask(baseTask: ApiTask): Task {        
         const task = new Task(baseTask, {
             tasks: this.#tasks.items,
-            parentsToChildIds: this.#parentsToChildIds.items,
+            parentsToChildIds: this.#parentsToChildIds,
             unlinkFromParent: (childId, parentId) => this.#unlinkFromParent(childId, parentId),
             linkToParent: (childId, parentId) => this.#linkToParent(childId, parentId),
         });

@@ -16,14 +16,7 @@ export class EventMap<K, V> {
     }
 
     set(key: K, value: V) {
-        if (this.has(key)) {
-            const item = this.get(key)!;
-
-            this.items.delete(key);
-
-            this.#deleteEvent.emit(key, item);
-        }
-        
+        this.delete(key);
         this.items.set(key, value);
 
         this.#addEvent.emit(key, value);

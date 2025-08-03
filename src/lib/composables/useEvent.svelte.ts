@@ -1,4 +1,4 @@
-import { onDestroy, onMount } from "svelte";
+import { onDestroy } from "svelte";
 
 export const useEvent = <T extends any[]>() => {
     type Handler = (...args: T) => void;
@@ -7,9 +7,7 @@ export const useEvent = <T extends any[]>() => {
 
     return {
         on: (handler: Handler) => {
-            onMount(() => {
-                handlers.add(handler);
-            });
+            handlers.add(handler);
 
             onDestroy(() => {
                 handlers.delete(handler);
