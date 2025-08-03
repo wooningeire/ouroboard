@@ -16,6 +16,7 @@ const config = {
 			"@": "./src/lib/components",
 			"$db": "./src/lib/server/db",
 			"$api": "./src/routes/api",
+			"$routes": "./src/routes",
 		}
 	}
 };

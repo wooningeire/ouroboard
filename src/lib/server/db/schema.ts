@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, varchar, time, real, boolean, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, varchar, time, real, boolean, foreignKey, primaryKey } from "drizzle-orm/pg-core";
 
 export const taskTable = pgTable("task", {
 	id: serial().notNull().primaryKey(),
@@ -47,6 +47,32 @@ export const taskTimeAllocationTable = pgTable("task_time_allocation", {
 		columns: [table.task_id],
 		foreignColumns: [taskTable.id],
 		name: "task",
+	})
+		.onDelete("cascade"),
+]);
+
+export const tagTable = pgTable("tag", {
+	id: serial().notNull().primaryKey(),
+	name: varchar({length: 256}).notNull(),
+});
+
+export const taskTagTable = pgTable("task_tag", {
+	task_id: integer().notNull(),
+	tag_id: integer().notNull(),
+}, table => [
+	primaryKey({ columns: [table.task_id, table.tag_id] }),
+
+	foreignKey({
+		columns: [table.task_id],
+		foreignColumns: [taskTable.id],
+		name: "task",
+	})
+		.onDelete("cascade"),
+
+	foreignKey({
+		columns: [table.tag_id],
+		foreignColumns: [tagTable.id],
+		name: "tag",
 	})
 		.onDelete("cascade"),
 ]);
