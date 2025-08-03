@@ -1,5 +1,5 @@
 import { SvelteSet } from "svelte/reactivity";
-import type { ReactiveTask, useTasksSet } from "./useTasksSet.svelte"
+import type { Task, useTasksSet } from "./useTasksSet.svelte"
 import { useEvent } from "./useEvent.svelte";
 
 export const useTasksSorter = ({
@@ -8,10 +8,10 @@ export const useTasksSorter = ({
     mapTaskToBucket,
 }: {
     tasksSet: ReturnType<typeof useTasksSet>,
-    filterTask: (task: ReactiveTask) => boolean,
-    mapTaskToBucket: (task: ReactiveTask) => Set<ReactiveTask> | null,
+    filterTask: (task: Task) => boolean,
+    mapTaskToBucket: (task: Task) => Set<Task> | null,
 }) => {
-    const oldBuckets = new Map<ReactiveTask, Set<ReactiveTask>>();
+    const oldBuckets = new Map<Task, Set<Task>>();
 
     tasksSet.taskEffect(task => {
         $effect(() => {
@@ -49,10 +49,10 @@ export const useTasksSorter = ({
     });
 
     
-    const bucketChangeEvent = useEvent<[ReactiveTask, Set<ReactiveTask> | null, Set<ReactiveTask> | null]>();
+    const bucketChangeEvent = useEvent<[Task, Set<Task> | null, Set<Task> | null]>();
 
     return {
-        onBucketChange: (handler: (task: ReactiveTask, oldBucket: Set<ReactiveTask> | null, newBucket: Set<ReactiveTask> | null) => void) => {
+        onBucketChange: (handler: (task: Task, oldBucket: Set<Task> | null, newBucket: Set<Task> | null) => void) => {
             bucketChangeEvent.on(handler);
         },
     };

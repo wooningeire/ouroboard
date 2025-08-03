@@ -5,8 +5,8 @@ let {
     value,
     onValueChange,
     placeholder = null,
-    validate = () => true,
-    disabled = false,
+    validate,
+    disabled,
 }: {
     value: string,
     onValueChange: (value: string) => void,

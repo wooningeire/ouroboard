@@ -6,13 +6,13 @@ import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 import { Button } from "@/ui/button";
 import Priority, { labels } from "./Priority.svelte";
 import Hours from "./Hours.svelte";
-import {type ReactiveTask} from "$lib/composables/useTasksSet.svelte";
 
 import collapsedNodeSvg from "$lib/assets/collapsed-node.svg";
 import uncollapsedNodeSvg from "$lib/assets/uncollapsed-node.svg";
-import { onDestroy, onMount } from "svelte";
-import { fade, fly, type TransitionConfig } from "svelte/transition";
-import { cubicInOut, cubicOut } from "svelte/easing";
+import { onMount } from "svelte";
+import { type TransitionConfig } from "svelte/transition";
+import { cubicOut } from "svelte/easing";
+    import type { Task } from "$lib/composables/Task.svelte";
 
 const {
     task,
@@ -24,7 +24,7 @@ const {
     onElHeightChange,
     displayAncestorTitles = false,
 }: {
-    task: ReactiveTask,
+    task: Task,
     forceSelected?: boolean,
     showChildToggle?: boolean,
     constrainMaxWidth?: boolean,
@@ -364,6 +364,14 @@ task-card {
             height 0.35s cubic-bezier(.4,0,0,1),
             width 0.35s cubic-bezier(.4,0,0,1),
             box-shadow 0.35s cubic-bezier(.4,0,0,1);
+
+        &.selected {
+            transition:
+                height 0.35s cubic-bezier(.4,0,0,1),
+                width 0.35s cubic-bezier(.4,0,0,1),
+                box-shadow 0.35s cubic-bezier(.4,0,0,1),
+                z-index 0.35s step-start;
+        }
     }
 
     --content-width: auto;

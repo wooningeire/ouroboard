@@ -4,14 +4,15 @@ import "@xyflow/svelte/dist/style.css";
 import type { OnConnectStart, OnConnectEnd, OnConnect, OnDelete, Connection, Node, Edge, OnSelectionChange } from "@xyflow/svelte";
 import TaskNode from "@/parts/TaskNode.svelte";
 import { api } from "$api/client";
-import {useTasksSet, tasksContextKey, ReactiveTask} from "$lib/composables/useTasksSet.svelte";
+import {useTasksSet, tasksContextKey} from "$lib/composables/useTasksSet.svelte";
 import { getContext, onMount, tick } from "svelte";
 import * as DropdownMenu from "@/ui/dropdown-menu";
 import AncestryEdge from "@/parts/AncestryEdge.svelte";
     import { useTasksSorter } from "$lib/composables/useTasksSorter.svelte";
     import { SvelteMap, SvelteSet } from "svelte/reactivity";
-    import { useTasksGraphLayout as useTasksGraph } from "$lib/composables/useTasksGraphLayout.svelte";
+    import { useTasksGraphLayout  } from "$lib/composables/useTasksGraphLayout.svelte";
     import PaneLabel from "@/parts/PaneLabel.svelte";
+    import type { Task } from "$lib/composables/Task.svelte";
 
 const {
     tasksPromise,
@@ -171,15 +172,15 @@ onMount(async () => {
 
 let showDone = $state(false);
 
-let selectedTasks = $state.raw(new Set<ReactiveTask>());
-const visibleTasks = $state(new SvelteSet<ReactiveTask>());
+let selectedTasks = $state.raw(new Set<Task>());
+const visibleTasks = $state(new SvelteSet<Task>());
 useTasksSorter({
     tasksSet,
     filterTask: task => showDone || !task.done || selectedTasks.has(task),
     mapTaskToBucket: task => visibleTasks,
 });
 
-const tasksGraph = useTasksGraph({
+const tasksGraph = useTasksGraphLayout({
     tasks: visibleTasks,
     tasksSet,
 });

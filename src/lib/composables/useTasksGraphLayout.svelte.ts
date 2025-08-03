@@ -1,12 +1,13 @@
 import Dagre, { graphlib } from "@dagrejs/dagre";
-import type { ReactiveTask, useTasksSet } from "./useTasksSet.svelte";
+import type { useTasksSet } from "./useTasksSet.svelte";
 import { SvelteMap } from "svelte/reactivity";
 import type { Edge, Node, NodeTypes } from "@xyflow/svelte";
 import { untrack } from "svelte";
+import type { Task } from "./Task.svelte";
 
 
 export class GraphTask {
-    task: ReactiveTask = $state()!;
+    task: Task = $state()!;
 
     readonly elDimensions = $state({
         width: 0,
@@ -31,7 +32,7 @@ export class GraphTask {
         };
     });
 
-    constructor(task: ReactiveTask) {
+    constructor(task: Task) {
         this.task = task;
     }
 }
@@ -40,10 +41,10 @@ export const useTasksGraphLayout = ({
     tasks,
     tasksSet,
 }: {
-    tasks: Set<ReactiveTask>,
+    tasks: Set<Task>,
     tasksSet: ReturnType<typeof useTasksSet>,
 }) => {
-    const graphTasks = $state(new SvelteMap<ReactiveTask, GraphTask>());
+    const graphTasks = $state(new SvelteMap<Task, GraphTask>());
 
     const layoutGraph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
     layoutGraph.setGraph({ rankdir: "LR", align: "UL", nodesep: 5 });
@@ -69,7 +70,7 @@ export const useTasksGraphLayout = ({
 
                 task.pos = {
                     x: x - width / 2,
-                    y: y - (untrack(() => graphTasks.get(task))?.elDimensions.height ?? 0) / 2,
+                    y: y - (graphTasks.get(task)?.elDimensions.height ?? 0) / 2,
                 };
             }
             
@@ -87,10 +88,10 @@ export const useTasksGraphLayout = ({
         requestUpdateNodePositions();
     };
 
-    const addToGraph = (task: ReactiveTask) => {
+    const addToGraph = (task: Task) => {
         layoutGraph.setNode(task.id.toString(), {
             width: width,
-            height: untrack(() => graphTasks.get(task))?.elDimensions.height ?? 0,
+            height: graphTasks.get(task)?.elDimensions.height ?? 0,
         });
 
         if (task.parentId !== null) {
@@ -109,25 +110,30 @@ export const useTasksGraphLayout = ({
         const graphTask = new GraphTask(task);
 
         $effect(() => {
-            if (visible) {
-                if (!untrack(() => graphTasks).has(task)) {
-                    graphTasks.set(task, graphTask);
+            void visible, task.id, task.parentId, graphTask.elDimensions.height;
+
+            untrack(() => {
+                if (visible) {
+                    if (!graphTasks.has(task)) {
+                        graphTasks.set(task, graphTask);
+                    }
+
+                    if ((lastId !== task.id || lastParentId !== task.parentId) && lastId !== undefined && lastParentId !== undefined) {
+                        removeFromGraph(lastId!, lastParentId!);
+                    }
+
+                    addToGraph(task);
+                    
+                } else {
+                    if (graphTasks.has(task)) {
+                        graphTasks.delete(task);
+                    }
+
+                    removeFromGraph(task.id, task.parentId);
+
                 }
+            });
 
-                if ((lastId !== task.id || lastParentId !== task.parentId) && lastId !== undefined && lastParentId !== undefined) {
-                    removeFromGraph(lastId!, lastParentId!);
-                }
-
-                addToGraph(task);
-                
-            } else {
-                if (untrack(() => graphTasks).has(task)) {
-                    graphTasks.delete(task);
-                }
-
-                removeFromGraph(task.id, task.parentId);
-
-            }
         
             lastId = task.id;
             lastParentId = task.parentId;

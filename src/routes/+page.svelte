@@ -7,13 +7,18 @@ import {useTasksSet, tasksContextKey} from "$lib/composables/useTasksSet.svelte"
     import { onMount, setContext } from "svelte";
     import Queue from "@/panes/Queue.svelte";
     import BgOverlay from "@/parts/BgOverlay.svelte";
+    import Button from "@/ui/button/button.svelte";
 
 
 const tasksSet = useTasksSet();
 setContext(tasksContextKey, tasksSet);
 
 
-const tasksPromise = api.task.list({});
+let tasksPromise = $state(api.task.list({}));
+const retryTaskLoad = () => {
+    tasksPromise = api.task.list({});
+};
+
 
 onMount(async () => {
     const {tasks} = await tasksPromise;
@@ -46,9 +51,13 @@ onMount(async () => {
         </queue-container>
 
         {#await tasksPromise}
-            <loading-overlay>Loading items</loading-overlay>
+            <loading-overlay>
+                <loading-overlay-text>Loading items</loading-overlay-text>
+            </loading-overlay>
         {:catch}
-            <loading-overlay>Failed to load tasks</loading-overlay>
+            <loading-overlay>
+                <Button onclick={retryTaskLoad}>Couldn't load tasks</Button>
+            </loading-overlay>
         {/await}
     </panes-grid>
 </main>

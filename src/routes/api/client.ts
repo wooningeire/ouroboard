@@ -24,4 +24,4 @@ export const api = {
     },
 };
 
-export type Task = Awaited<ReturnType<typeof api.task.list>>["tasks"][0];
+export type ApiTask = Awaited<ReturnType<typeof api.task.list>>["tasks"][0];

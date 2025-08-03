@@ -1,6 +1,5 @@
 <script lang="ts">
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/svelte";
-import {ReactiveTask} from "$lib/composables/useTasksSet.svelte";
 
 import TaskCard from "./TaskCard.svelte";
     import { GraphTask } from "$lib/composables/useTasksGraphLayout.svelte";
