@@ -2,7 +2,7 @@
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/svelte";
 
 import TaskCard from "./TaskCard.svelte";
-import { GraphTask } from "$lib/composables/useTasksGraphLayout.svelte";
+import { GraphTask } from "$lib/composables/GraphTask.svelte";
 
 const {
     selected,

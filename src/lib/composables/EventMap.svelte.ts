@@ -1,11 +1,11 @@
 import { SvelteMap } from "svelte/reactivity";
-import { useEvent } from "./useEvent.svelte";
+import { EventSource } from "./EventSource";
 
 export class EventMap<K, V> {
     readonly items = $state(new SvelteMap<K, V>());
 
-    readonly #addEvent = useEvent<[K, V]>();
-    readonly #deleteEvent = useEvent<[K, V]>();
+    readonly #addEvent = new EventSource<[K, V]>();
+    readonly #deleteEvent = new EventSource<[K, V]>();
 
     onAdd(fn: (key: K, value: V) => void) {
         this.#addEvent.on(fn);

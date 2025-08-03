@@ -9,11 +9,11 @@ import { getContext, onMount, tick } from "svelte";
 import * as DropdownMenu from "@/ui/dropdown-menu";
 import AncestryEdge from "@/parts/AncestryEdge.svelte";
     import { useTasksSorter } from "$lib/composables/useTasksSorter.svelte";
-    import { SvelteMap, SvelteSet } from "svelte/reactivity";
-    import { useTasksGraphLayout  } from "$lib/composables/useTasksGraphLayout.svelte";
+    import { SvelteSet } from "svelte/reactivity";
     import PaneLabel from "@/parts/PaneLabel.svelte";
     import type { Task } from "$lib/composables/Task.svelte";
     import { TASKS_CONTEXT_KEY } from "../../../routes/+page.svelte";
+    import { TasksGraphLayout } from "$lib/composables/TasksGraphLayout.svelte";
 
 const {
     tasksPromise,
@@ -180,9 +180,7 @@ useTasksSorter({
     mapTaskToBucket: task => visibleTasks,
 });
 
-const tasksGraph = useTasksGraphLayout({
-    tasksSet,
-});
+const tasksGraph = new TasksGraphLayout({tasksSet});
 </script>
 
 

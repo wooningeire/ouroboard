@@ -1,6 +1,5 @@
 import type { ApiTask } from "$api/client";
-import { SvelteMap, SvelteSet } from "svelte/reactivity";
-import { useEvent } from "./useEvent.svelte";
+import { SvelteSet } from "svelte/reactivity";
 import { Task } from "./Task.svelte";
 import { EventMap } from "./EventMap.svelte";
 

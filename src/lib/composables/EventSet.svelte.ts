@@ -1,5 +1,5 @@
 import { SvelteSet } from "svelte/reactivity";
-import { useEvent } from "./useEvent.svelte";
+import { useEvent } from "./EventSource";
 
 export class EventSet<T> {
     readonly items = $state(new SvelteSet<T>());

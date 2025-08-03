@@ -1,6 +1,6 @@
 import {type Task} from "./Task.svelte";
-import {TasksSet} from "./TasksSet.svelte"
-import { useEvent } from "./useEvent.svelte";
+import {TasksSet} from "./TasksSet.svelte";
+import { EventSource } from "./EventSource";
 
 export const useTasksSorter = ({
     tasksSet,
@@ -49,7 +49,7 @@ export const useTasksSorter = ({
     });
 
     
-    const bucketChangeEvent = useEvent<[Task, Set<Task> | null, Set<Task> | null]>();
+    const bucketChangeEvent = new EventSource<[Task, Set<Task> | null, Set<Task> | null]>();
 
     return {
         onBucketChange: (handler: (task: Task, oldBucket: Set<Task> | null, newBucket: Set<Task> | null) => void) => {
