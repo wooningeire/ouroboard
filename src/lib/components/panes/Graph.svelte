@@ -144,7 +144,6 @@ const onConnect: OnConnect = async (connection: Connection) => {
 const onDelete: OnDelete = async ({ nodes: deletedNodes }) => {
     for (const node of deletedNodes) {
         const task = tasksSet.getTask(Number(node.id));
-        console.log(task);
         if (task === undefined) continue;
         tasksSet.delTask(task);
     }
@@ -182,7 +181,6 @@ useTasksSorter({
 });
 
 const tasksGraph = useTasksGraphLayout({
-    tasks: visibleTasks,
     tasksSet,
 });
 </script>

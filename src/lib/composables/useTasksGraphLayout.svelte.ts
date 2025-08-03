@@ -38,123 +38,66 @@ export class GraphTask {
 }
 
 export const useTasksGraphLayout = ({
-    tasks,
     tasksSet,
 }: {
-    tasks: Set<Task>,
     tasksSet: TasksSet,
 }) => {
     const graphTasks = $state(new SvelteMap<Task, GraphTask>());
 
-    const layoutGraph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-    layoutGraph.setGraph({ rankdir: "LR", align: "UL", nodesep: 5 });
-
-    // const maxWidth = $derived(Math.max(
-    //     ...graphTasks.values()
-    //         .map(graphTask => graphTask.elDimensions.width)
-    // ));
-
     const width = 600;
+    $effect.root(() => {
+        $effect(() => {
+            const layoutGraph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+            layoutGraph.setGraph({ rankdir: "LR", align: "UL", nodesep: 5 });
 
-    let updateRequested = false;
-    const requestUpdateNodePositions = () => {
-        if (updateRequested) return;
+            for (const [task, graphTask] of graphTasks.entries()) {
+                if (!task.visible) continue;
 
-        updateRequested = true;
+                layoutGraph.setNode(task.id.toString(), {
+                    width: width,
+                    height: graphTask.elDimensions.height,
+                });
 
-        requestAnimationFrame(() => {
+                if (task.parentId !== null) {
+                    layoutGraph.setEdge(task.parentId.toString(), task.id.toString());
+                }
+            }
+
             Dagre.layout(layoutGraph, {disableOptimalOrderHeuristic: true});
 
-            for (const task of tasks) {
-                const {x, y} = layoutGraph.node(task.id.toString());
+            for (const [task, graphTask] of graphTasks.entries()) {
+                if (!task.visible) continue;
+                
+                const {x, y} = layoutGraph.node(task.id.toString())!;
 
                 task.pos = {
                     x: x - width / 2,
-                    y: y - (graphTasks.get(task)?.elDimensions.height ?? 0) / 2,
+                    y: y - graphTask.elDimensions.height / 2,
                 };
             }
-            
-            updateRequested = false;
-        });
-    };
-
-    const removeFromGraph = (childId: number, parentId: number | null) => {
-        layoutGraph.removeNode(childId.toString());
-
-        if (parentId !== null) {
-            layoutGraph.removeEdge(parentId.toString(), childId.toString());
-        }
-
-        requestUpdateNodePositions();
-    };
-
-    const addToGraph = (task: Task) => {
-        layoutGraph.setNode(task.id.toString(), {
-            width: width,
-            height: graphTasks.get(task)?.elDimensions.height ?? 0,
-        });
-
-        if (task.parentId !== null) {
-            layoutGraph.setEdge(task.parentId.toString(), task.id.toString());
-        }
-
-        requestUpdateNodePositions();
-    };
-
-    tasksSet.taskEffect(task => {
-        let lastId: number | undefined = undefined;
-        let lastParentId: number | null | undefined = undefined;
-
-        const visible = $derived(tasks.has(task));
-
-        const graphTask = new GraphTask(task);
-
-        $effect(() => {
-            void visible, task.id, task.parentId, graphTask.elDimensions.height;
-
-            untrack(() => {
-                if (visible) {
-                    if (!graphTasks.has(task)) {
-                        graphTasks.set(task, graphTask);
-                    }
-
-                    if ((lastId !== task.id || lastParentId !== task.parentId) && lastId !== undefined && lastParentId !== undefined) {
-                        removeFromGraph(lastId!, lastParentId!);
-                    }
-
-                    addToGraph(task);
-                    
-                } else {
-                    if (graphTasks.has(task)) {
-                        graphTasks.delete(task);
-                    }
-
-                    removeFromGraph(task.id, task.parentId);
-
-                }
-            });
-
-        
-            lastId = task.id;
-            lastParentId = task.parentId;
         });
     });
 
+    tasksSet.taskEffect(task => {
+        graphTasks.set(task, new GraphTask(task));
+    });
+
     tasksSet.onDel(task => {
-        removeFromGraph(task.id, task.parentId);
         graphTasks.delete(task);
     });
     
         
     const flowNodes = $derived.by(() => {
-        return graphTasks.values()
-            .map(graphTask => graphTask.flowNode)
+        return graphTasks.entries()
+            .filter(([task, graphTask]) => task.visible)
+            .map(([task, graphTask]) => graphTask.flowNode)
             .toArray();
     });
 
     const flowEdges = $derived.by(() => {
-        return graphTasks.values()
-            .map(graphTask => graphTask.flowEdge)
+        return graphTasks.entries()
+            .filter(([task, graphTask]) => task.visible)
+            .map(([task, graphTask]) => graphTask.flowEdge)
             .filter(edge => edge !== null)
             .toArray();
     });

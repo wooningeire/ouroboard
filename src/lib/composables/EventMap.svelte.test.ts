@@ -116,10 +116,10 @@ describe(EventMap.name, () => {
                     const map = new EventMap<number, string | undefined>();
                     map.onDelete(() => nDeletions++);
                     populate(map);
-                    expect(nDeletions).toBe(3);
                 },
             });
 
+            expect(nDeletions).toBe(3);
         });
 
         it("emits the correctly deleted items", () => {
