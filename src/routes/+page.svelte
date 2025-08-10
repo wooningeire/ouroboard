@@ -12,6 +12,7 @@ import {TasksSet} from "$lib/composables/TasksSet.svelte";
     import Queue from "@/panes/Queue.svelte";
     import BgOverlay from "@/parts/BgOverlay.svelte";
     import Button from "@/ui/button/button.svelte";
+    import TableView from "@/panes/TableView.svelte";
 
 
 const tasksSet = new TasksSet();
@@ -40,6 +41,7 @@ onMount(async () => {
     </title-bar>
 
     <panes-grid>
+        <!--
         <graph-container>
             <SvelteFlowProvider>
                 <Graph {tasksPromise} />
@@ -53,6 +55,11 @@ onMount(async () => {
         <queue-container>
             <Queue />
         </queue-container>
+        -->
+
+        <table-view>
+            <TableView />
+        </table-view>
 
         {#await tasksPromise}
             <loading-overlay>
